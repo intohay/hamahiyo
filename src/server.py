@@ -37,6 +37,8 @@ def task_status(job_id):
         # !は「！」に置換
         messages = [message.replace('!','！') for message in messages]
 
+        messages = messages[1:]
+        
         return jsonify({'status': job.get_status(), 'result': messages})
     elif job.is_failed:
         return jsonify({'status': job.get_status(), 'message': job.exc_info})
