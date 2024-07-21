@@ -5,7 +5,7 @@ model_path = '../finetuned_gpt2'
 model = AutoModelForCausalLM.from_pretrained(model_path)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-def getarate_messages(seed_sentence, num_sentences=1, num_messages=3):
+def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
 
 
     sentences = seed_sentence

@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from generate import getarate_messages
+from generate import generate_messages
 from flask_cors import CORS
 from rq import Queue
 from redis import Redis
@@ -13,7 +13,7 @@ q = Queue(connection=redis_conn)
 
 @app.route('/start-task', methods=['POST'])
 def start_generating():
-    job = q.enqueue(getarate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
+    job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
     return jsonify({'job_id': job.get_id()}), 202
 
 @app.route('/task-status/<job_id>', methods=['GET'])
