@@ -5,7 +5,7 @@ from rq import Queue
 from redis import Redis
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"]}})
+CORS(app)
 
 redis_conn = Redis()
 q = Queue(connection=redis_conn)
@@ -51,7 +51,7 @@ def get_messages():
         return '', 204  # プレフライトリクエストには204 No Contentを返す
     
 
-    messages = getarate_messages("やほー！</s>", num_sentences=1, num_messages=2)
+    messages = generate_messages("やほー！</s>", num_sentences=1, num_messages=2)
     # 空白は改行に
     messages = [message.replace(' ', '\n') for message in messages]
 
