@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer,AutoModelForCausalLM
 
 
-model_path = 'finetuned_gpt2'
+model_path = '../finetuned_gpt2'
 model = AutoModelForCausalLM.from_pretrained(model_path)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
