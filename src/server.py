@@ -22,20 +22,27 @@ def task_status(job_id):
     if job is None:
         return jsonify({'status': 'not found'}), 404
 
-    messages = job.result
-    # 空白は改行に
-    messages = [message.replace(' ', '\n') for message in messages]
 
-    # %%%や%%は「マンボウちゃん」に置換
-    messages = [message.replace('%%%','マンボウちゃん') for message in messages]
-    messages = [message.replace('%%','マンボウちゃん') for message in messages]
+    if job.is_finished:
+        messages = job.result
+        # 空白は改行に
+        messages = [message.replace(' ', '\n') for message in messages]
 
-    # ?は「？」に置換
-    messages = [message.replace('?','？') for message in messages]
-    # !は「！」に置換
-    messages = [message.replace('!','！') for message in messages]
+        # %%%や%%は「マンボウちゃん」に置換
+        messages = [message.replace('%%%','マンボウちゃん') for message in messages]
+        messages = [message.replace('%%','マンボウちゃん') for message in messages]
 
-    return jsonify({'status': job.get_status(), 'result': messages})
+        # ?は「？」に置換
+        messages = [message.replace('?','？') for message in messages]
+        # !は「！」に置換
+        messages = [message.replace('!','！') for message in messages]
+
+        return jsonify({'status': job.get_status(), 'result': messages})
+    elif job.is_failed:
+        return jsonify({'status': job.get_status(), 'message': job.exc_info})
+    else:
+        return jsonify({'status': job.get_status()})
+    
 
 
 @app.route('/api/messages', methods=['GET', 'OPTIONS'])
