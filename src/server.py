@@ -8,8 +8,10 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 
+# 上の階層の.envファイルを読み込む
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
