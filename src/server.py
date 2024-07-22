@@ -8,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 
+
 # 上の階層の.envファイルを読み込む
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
@@ -100,8 +101,6 @@ def generate_and_store_messages():
         
         
         
-
-
 if __name__ == '__main__':
     env = os.getenv('FLASK_ENV', 'development')
     if env == 'production':
@@ -109,15 +108,6 @@ if __name__ == '__main__':
     else:
         debug_mode = True
 
-    # スケジューラを設定して定期的にメッセージを生成
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=generate_and_store_messages, trigger="interval", minutes=1)
-    scheduler.start()
 
-    try:
-        # Flaskアプリケーションを実行
-        app.run(debug=debug_mode)
-    except (KeyboardInterrupt, SystemExit):
-        pass
-    finally:
-        scheduler.shutdown()
+    app.run(debug=debug_mode)
+   
