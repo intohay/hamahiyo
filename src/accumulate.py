@@ -5,6 +5,7 @@ from generate import generate_messages
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
+from flask_migrate import Migrate
 
 load_dotenv()
 app = Flask(__name__)
@@ -15,7 +16,7 @@ db_path = os.path.join(base_dir, '..', 'instance/messages.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
+migrate = Migrate(app, db)  
 
 class MessageStock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
