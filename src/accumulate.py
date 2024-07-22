@@ -1,11 +1,26 @@
 # scheduler.py
 import os
+import sys
 from flask import Flask
 from generate import generate_messages
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from flask_migrate import Migrate
+import fcntl
+
+LOCK_FILE = '/tmp/accumulator.lock'
+
+# ロックファイルを開く
+fp = open(LOCK_FILE, 'w')
+
+try:
+    # ロックを取得
+    fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except IOError:
+    print("Another instance is running, exiting.")
+    sys.exit(1)
+
 
 load_dotenv()
 app = Flask(__name__)
@@ -48,3 +63,7 @@ def generate_and_store_messages():
 
 if __name__ == '__main__':
     generate_and_store_messages()
+
+    # プロセス終了時にロックを解放
+    fcntl.flock(fp, fcntl.LOCK_UN)
+    fp.close()
