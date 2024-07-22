@@ -1,6 +1,5 @@
 # scheduler.py
 import os
-import threading
 from flask import Flask
 from generate import generate_messages
 from flask_sqlalchemy import SQLAlchemy
@@ -17,9 +16,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+
 class MessageStock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String, nullable=False)
+    is_released = db.Column(db.Boolean, default=False)
+
 
 def contains_bad_words(text):
     BAD_WORDS = os.getenv('BAD_WORDS', '').split(',')
@@ -42,12 +44,6 @@ def generate_and_store_messages():
             db.session.commit()
             print("Messages generated and stored")
 
-def start_scheduler():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=generate_and_store_messages, trigger="interval", minutes=1)
-    scheduler.start()
-    print("Scheduler started")
-    threading.Event().wait()
 
 if __name__ == '__main__':
-    start_scheduler()
+    generate_and_store_messages()
