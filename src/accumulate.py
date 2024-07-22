@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from flask_migrate import Migrate
 import fcntl
 
-LOCK_FILE = '/tmp/accumulator.lock'
+LOCK_FILE = 'accumulator.lock'
 
 # ロックファイルを開く
 fp = open(LOCK_FILE, 'w')
