@@ -3,3 +3,4 @@ data
 cached_*
 finetuned_gpt2
 *.pyc
+.env

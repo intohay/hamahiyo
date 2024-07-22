@@ -1,7 +1,10 @@
 from transformers import AutoTokenizer,AutoModelForCausalLM
 
+import os
 
-model_path = '../finetuned_gpt2'
+
+model_path = os.path.join(os.path.dirname(__file__), '../finetuned_gpt2')
+
 model = AutoModelForCausalLM.from_pretrained(model_path)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
@@ -33,7 +36,7 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = messages.split("</s>")
    
 
-    print(messages)
+    
 
 
     # special tokenを除く
@@ -43,13 +46,16 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = [message.replace(tokenizer.unk_token, '') for message in messages]
     messages = [message.replace(tokenizer.sep_token, '') for message in messages]
 
-
+    
     # 空白は改行に
     messages = [message.replace(' ', '\n') for message in messages]
-
+    
     # %%%や%%は「マンボウちゃん」に置換
     messages = [message.replace('%%%','マンボウちゃん') for message in messages]
     messages = [message.replace('%%','マンボウちゃん') for message in messages]
+
+    # %は除外
+    messages = [message.replace('%','') for message in messages]
 
     # ?は「？」に置換
     messages = [message.replace('?','？') for message in messages]
