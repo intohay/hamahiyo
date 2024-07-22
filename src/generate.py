@@ -21,7 +21,7 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
                         min_length=16,  # 文章の最小長
                         max_length=64,  # 文章の最大長
                         do_sample=True,   # 次の単語を確率で選ぶ
-                        top_k=128, # Top-Kサンプリング
+                        top_k=50, # Top-Kサンプリング
                         top_p=0.95,  # Top-pサンプリング
                         temperature=1.2,  # 確率分布の調整
                         num_return_sequences=num_sentences,  # 生成する文章の数
