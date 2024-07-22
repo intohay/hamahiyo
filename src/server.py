@@ -7,7 +7,7 @@ from redis import Redis
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
-
+from flask_migrate import Migrate  
 
 # 上の階層の.envファイルを読み込む
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -23,6 +23,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)  
 
 redis_conn = Redis()
 q = Queue(connection=redis_conn)
@@ -32,6 +33,7 @@ BAD_WORDS = os.getenv('BAD_WORDS', '').split(',')
 class MessageStock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String, nullable=False)
+    is_released = db.Column(db.Boolean, default=False)
 
 
 
@@ -65,10 +67,10 @@ def task_status(job_id):
     
 @app.route('/generate', methods=['GET'])
 def get_message():
-    message_stock = MessageStock.query.first()
+    message_stock = MessageStock.query.filter_by(released=False).first()
     if message_stock:
         message = message_stock.message
-        db.session.delete(message_stock)
+        message_stock.is_released = True
         db.session.commit()
         return jsonify({'message': message})
     else:

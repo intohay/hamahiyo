@@ -12,6 +12,8 @@ db = SQLAlchemy(app)
 class MessageStock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String, nullable=False)
+    is_released = db.Column(db.Boolean, default=False)
+    
 
 def create_tables():
     with app.app_context():
