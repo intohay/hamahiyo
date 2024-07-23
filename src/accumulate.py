@@ -49,7 +49,7 @@ def contains_bad_words(text):
 def generate_and_store_messages():
     with app.app_context():
         # メッセージを生成してストックに追加
-        messages = generate_messages("やほー！</s>", num_sentences=1, num_messages=2)
+        messages = generate_messages("やほー！</s>", num_sentences=3, num_messages=2)
         for message in messages:
             if contains_bad_words(message):
                 break

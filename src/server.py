@@ -75,8 +75,9 @@ def get_message():
         return jsonify({'message': message})
     else:
        # ストックがない場合、新しいメッセージを生成するジョブをキューに追加
-        job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
-        return jsonify({'job_id': job.get_id()}), 202
+        message = "ストック切れだよー！しばしお待ちを！"
+        # job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
+        return jsonify({'message': message})
 
 def contains_bad_words(text):
     for word in BAD_WORDS:
