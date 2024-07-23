@@ -50,12 +50,14 @@ def generate_and_store_messages():
     with app.app_context():
         # メッセージを生成してストックに追加
         messages = generate_messages("やほー！</s>", num_sentences=3, num_messages=2)
+        print(messages)
         for message in messages:
-            if contains_bad_words(message):
-                break
+            for item in message:
+                if contains_bad_words(item):
+                    break
             
-            new_message = MessageStock(message=message)
-            db.session.add(new_message)
+                new_message = MessageStock(message=item)
+                db.session.add(new_message)
         else:
             db.session.commit()
             print("Messages generated and stored")

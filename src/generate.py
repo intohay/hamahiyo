@@ -30,44 +30,50 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
                         eos_token_id=tokenizer.eos_token_id,  # テキスト終端のトークンID
                         )
 
-        messages = tokenizer.batch_decode(y, skip_special_tokens=False)[0]  # 特殊トークンをスキップして文章に変換
+        messages = tokenizer.batch_decode(y, skip_special_tokens=False)  # 特殊トークンをスキップして文章に変換
         
     
-    messages = messages.split("</s>")
+    
    
 
     
-
+    
 
     # special tokenを除く
-    messages = [message.replace(tokenizer.eos_token, '') for message in messages]
+    
     messages = [message.replace(tokenizer.bos_token, '') for message in messages]
     messages = [message.replace(tokenizer.pad_token, '') for message in messages]
     messages = [message.replace(tokenizer.unk_token, '') for message in messages]
     messages = [message.replace(tokenizer.sep_token, '') for message in messages]
 
     
+    
     # 空白は改行に
     messages = [message.replace(' ', '\n') for message in messages]
-    
-    # %%%や%%は「マンボウちゃん」に置換
-    messages = [message.replace('%%%','マンボウちゃん') for message in messages]
-    messages = [message.replace('%%','マンボウちゃん') for message in messages]
 
-    # %は除外
-    messages = [message.replace('%','') for message in messages]
 
     # ?は「？」に置換
     messages = [message.replace('?','？') for message in messages]
     # !は「！」に置換
     messages = [message.replace('!','！') for message in messages]
 
-    # 空の要素は削除
-    messages = [message for message in messages if message != '']
-    # 前後の空白を削除
-    messages = [message.strip() for message in messages]
-    messages = messages[1:]
+    
+
    
+    
+
+    messages = [message.split("</s>") for message in messages]
+
+    # 空の要素は削除
+    messages = [[item for item in message if item != ''] for message in messages]
+
+    messages = [message[1:] for message in messages]
+    print(messages)
+
+    # 前後の空白を削除
+    messages = [[item.strip() for item in message] for message in messages]
+
+
     return messages
 
 
