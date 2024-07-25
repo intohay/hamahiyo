@@ -11,6 +11,9 @@ import fcntl
 import jaconv
 
 LOCK_FILE = 'accumulator.lock'
+base_dir = os.path.abspath(os.path.dirname(__file__))
+bad_words_path = os.path.join(base_dir, '..', 'bad_words.yaml')
+
 
 # ロックファイルを開く
 fp = open(LOCK_FILE, 'w')
@@ -40,7 +43,7 @@ class MessageStock(db.Model):
 
 # YAMLファイルからbad_wordsを読み込む
 def load_bad_words():
-    with open("bad_words.yaml", "r", encoding="utf-8") as file:
+    with open(bad_words_path, "r", encoding="utf-8") as file:
         bad_words = yaml.safe_load(file)
     bad_words_list = []
     for genre in bad_words:
@@ -70,7 +73,7 @@ def generate_and_store_messages():
                 if contains_bad_words(item):
                     break
                 
-                
+
 
                 new_message = MessageStock(message=item)
                 db.session.add(new_message)
