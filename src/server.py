@@ -8,6 +8,8 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate  
+import jaconv
+from accumulate import load_bad_words
 
 # 上の階層の.envファイルを読み込む
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -78,6 +80,23 @@ def get_message():
         message = "ストック切れだよー！しばしお待ちを！"
         # job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
         return jsonify({'message': message})
+
+
+@app.cli.command("delete_bad_words")
+def delete_bad_words():
+    BAD_WORDS = load_bad_words()
+    messages_to_delete = MessageStock.query.all()
+    bad_words_hiragana = [jaconv.kata2hira(word.lower().strip()) for word in BAD_WORDS]
+    
+    for message in messages_to_delete:
+        message_text_hiragana = jaconv.kata2hira(message.message.lower())
+        if any(word in message_text_hiragana for word in bad_words_hiragana):
+            print(message)
+            db.session.delete(message)
+
+    db.session.commit()
+    print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
+
 
 def contains_bad_words(text):
     for word in BAD_WORDS:
