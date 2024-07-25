@@ -1,6 +1,5 @@
 import os
 import sys
-import yaml
 from flask import Flask
 from generate import generate_messages
 from flask_sqlalchemy import SQLAlchemy
@@ -8,11 +7,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 import fcntl
-import jaconv
+from utilities import contains_bad_words
 
 LOCK_FILE = 'accumulator.lock'
-base_dir = os.path.abspath(os.path.dirname(__file__))
-bad_words_path = os.path.join(base_dir, '..', 'bad_words.yaml')
 
 
 # ロックファイルを開く
@@ -41,26 +38,6 @@ class MessageStock(db.Model):
     message = db.Column(db.String, nullable=False)
     is_released = db.Column(db.Boolean, default=False)
 
-# YAMLファイルからbad_wordsを読み込む
-def load_bad_words():
-    with open(bad_words_path, "r", encoding="utf-8") as file:
-        bad_words = yaml.safe_load(file)
-    bad_words_list = []
-    for genre in bad_words:
-        bad_words_list.extend(bad_words[genre])
-    return bad_words_list
-
-BAD_WORDS = load_bad_words()
-
-
-def contains_bad_words(text):
-    # テキストとbad wordsをひらがなに変換
-    text_hiragana = jaconv.kata2hira(text.lower())
-    for word in BAD_WORDS:
-        word_hiragana = jaconv.kata2hira(word.lower().strip())
-        if word_hiragana in text_hiragana:
-            return True
-    return False
 
 
 def generate_and_store_messages():
@@ -72,8 +49,6 @@ def generate_and_store_messages():
             for item in message:
                 if contains_bad_words(item):
                     break
-                
-
 
                 new_message = MessageStock(message=item)
                 db.session.add(new_message)

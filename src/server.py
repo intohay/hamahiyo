@@ -1,13 +1,11 @@
 import os
-from flask import Flask, jsonify, request
-from generate import generate_messages
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate  
 import jaconv
-from accumulate import load_bad_words, contains_bad_words
+from utilities import load_bad_words, contains_bad_words
 import csv
 
 # 上の階層の.envファイルを読み込む
