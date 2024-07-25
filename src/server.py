@@ -2,14 +2,13 @@ import os
 from flask import Flask, jsonify, request
 from generate import generate_messages
 from flask_cors import CORS
-from rq import Queue
-from redis import Redis
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate  
 import jaconv
-from accumulate import load_bad_words
+from accumulate import load_bad_words, contains_bad_words
+import csv
 
 # 上の階層の.envファイルを読み込む
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -27,8 +26,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  
 
-redis_conn = Redis()
-q = Queue(connection=redis_conn)
 
 BAD_WORDS = os.getenv('BAD_WORDS', '').split(',')
 
@@ -71,7 +68,24 @@ def delete_bad_words():
 
     print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
 
-
+@app.cli.command("import_messages")
+def import_messages():
+    file_path = os.path.join(base_dir, 'messages.csv')
+    
+    if not os.path.exists(file_path):
+        print(f"No file found at {file_path}")
+        return
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            message_text = row[0]
+            if not contains_bad_words(message_text):
+                new_message = MessageStock(message=message_text)
+                db.session.add(new_message)
+    
+    db.session.commit()
+    print("Messages imported successfully")
         
         
 if __name__ == '__main__':
