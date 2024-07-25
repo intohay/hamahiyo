@@ -68,7 +68,7 @@ def delete_bad_words():
 
 @app.cli.command("import_messages")
 def import_messages():
-    file_path = os.path.join(base_dir, 'messages.csv')
+    file_path = os.path.join(base_dir, '../messages.csv')
     
     if not os.path.exists(file_path):
         print(f"No file found at {file_path}")
