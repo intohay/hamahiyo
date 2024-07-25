@@ -69,7 +69,7 @@ def task_status(job_id):
     
 @app.route('/generate', methods=['GET'])
 def get_message():
-    message_stock = MessageStock.query.filter_by(is_released=False).first()
+    message_stock = MessageStock.query.filter_by(is_released=False).order_by(MessageStock.id.desc()).first()
     if message_stock:
         message = message_stock.message
         message_stock.is_released = True
