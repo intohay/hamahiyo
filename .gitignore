@@ -6,3 +6,4 @@ finetuned_gpt2
 .env
 *.db
 *.lock
+bad_words.yaml

@@ -1,6 +1,6 @@
-# scheduler.py
 import os
 import sys
+import yaml
 from flask import Flask
 from generate import generate_messages
 from flask_sqlalchemy import SQLAlchemy
@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 import fcntl
+import jaconv
 
 LOCK_FILE = 'accumulator.lock'
 
@@ -21,7 +22,6 @@ except IOError:
     print("Another instance is running, exiting.")
     sys.exit(1)
 
-
 load_dotenv()
 app = Flask(__name__)
 
@@ -31,20 +31,34 @@ db_path = os.path.join(base_dir, '..', 'instance/messages.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)  
+migrate = Migrate(app, db)
 
 class MessageStock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String, nullable=False)
     is_released = db.Column(db.Boolean, default=False)
 
+# YAMLファイルからbad_wordsを読み込む
+def load_bad_words():
+    with open("bad_words.yaml", "r", encoding="utf-8") as file:
+        bad_words = yaml.safe_load(file)
+    bad_words_list = []
+    for genre in bad_words:
+        bad_words_list.extend(bad_words[genre])
+    return bad_words_list
+
+BAD_WORDS = load_bad_words()
+
 
 def contains_bad_words(text):
-    BAD_WORDS = os.getenv('BAD_WORDS', '').split(',')
+    # テキストとbad wordsをひらがなに変換
+    text_hiragana = jaconv.kata2hira(text.lower())
     for word in BAD_WORDS:
-        if word.strip().lower() in text.lower():
+        word_hiragana = jaconv.kata2hira(word.lower().strip())
+        if word_hiragana in text_hiragana:
             return True
     return False
+
 
 def generate_and_store_messages():
     with app.app_context():
@@ -61,7 +75,6 @@ def generate_and_store_messages():
         else:
             db.session.commit()
             print("Messages generated and stored")
-
 
 if __name__ == '__main__':
     generate_and_store_messages()

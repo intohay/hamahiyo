@@ -68,7 +68,6 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = [[item for item in message if item != ''] for message in messages]
 
     messages = [message[1:] for message in messages]
-    print(messages)
 
     # 前後の空白を削除
     messages = [[item.strip() for item in message] for message in messages]

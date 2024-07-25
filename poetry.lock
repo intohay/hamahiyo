@@ -704,6 +704,16 @@ files = [
 ]
 
 [[package]]
+name = "jaconv"
+version = "0.4.0"
+description = "Pure-Python Japanese character interconverter for Hiragana, Katakana, Hankaku, Zenkaku and more"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jaconv-0.4.0.tar.gz", hash = "sha256:32da74b247f276e09a52d6b35c153df2387965cb85a6f034cc8af21d446f8161"},
+]
+
+[[package]]
 name = "jedi"
 version = "0.19.1"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -2467,4 +2477,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "fd220cd31f2dd899e8c9da4587f4251d72de26e8ab78d529f46fc7140ec8b2a9"
+content-hash = "ebd17506861fff4e6eca4fc340207a90cc4f0275359060fa625580e65a6667a2"
