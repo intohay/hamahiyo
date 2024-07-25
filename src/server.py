@@ -91,10 +91,11 @@ def delete_bad_words():
     for message in messages_to_delete:
         message_text_hiragana = jaconv.kata2hira(message.message.lower())
         if any(word in message_text_hiragana for word in bad_words_hiragana):
-            print(message)
+            print(message.message)
             db.session.delete(message)
 
     db.session.commit()
+
     print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
 
 

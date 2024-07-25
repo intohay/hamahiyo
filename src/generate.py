@@ -32,7 +32,7 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
 
         messages = tokenizer.batch_decode(y, skip_special_tokens=False)  # 特殊トークンをスキップして文章に変換
         
-    
+   
     
    
 
@@ -46,10 +46,6 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = [message.replace(tokenizer.unk_token, '') for message in messages]
     messages = [message.replace(tokenizer.sep_token, '') for message in messages]
 
-    
-    
-    # 空白は改行に
-    messages = [message.replace(' ', '\n') for message in messages]
 
 
     # ?は「？」に置換
@@ -57,10 +53,12 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     # !は「！」に置換
     messages = [message.replace('!','！') for message in messages]
 
-    
+    # [NEWLINE]は改行に
+    messages = [message.replace(' [NEWLINE] ', '\n') for message in messages]
 
-   
-    
+    messages = [message.replace(' [NEWLINE]', '\n') for message in messages]
+
+    messages = [message.replace('[NEWLINE] ', '\n') for message in messages]
 
     messages = [message.split("</s>") for message in messages]
 
@@ -73,8 +71,9 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = [[item.strip() for item in message] for message in messages]
 
 
+
     return messages
 
 
 if __name__ == '__main__':
-    print(generate_messages("やほー！</s>", num_sentences=1, num_messages=2))
+    print(generate_messages("やほー！</s>", num_sentences=10, num_messages=2))

@@ -69,7 +69,9 @@ def generate_and_store_messages():
             for item in message:
                 if contains_bad_words(item):
                     break
-            
+                
+                
+
                 new_message = MessageStock(message=item)
                 db.session.add(new_message)
         else:
