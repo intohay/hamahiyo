@@ -39,33 +39,6 @@ class MessageStock(db.Model):
 
 
 
-
-@app.route('/start-task', methods=['POST'])
-def start_generating():
-    job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
-    return jsonify({'job_id': job.get_id()}), 202
-
-@app.route('/task-status/<job_id>', methods=['GET'])
-def task_status(job_id):
-    job = q.fetch_job(job_id)
-    if job is None:
-        return jsonify({'status': 'not found'}), 404
-
-
-    if job.is_finished:
-        messages = job.result
-        # bad_wordsが含まれていたら再生成
-        for message in messages:
-            if contains_bad_words(message):
-                job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
-                return jsonify({'status': 'retry', 'job_id': job.get_id()}), 202
-            
-        
-        return jsonify({'status': job.get_status(), 'result': messages})
-    elif job.is_failed:
-        return jsonify({'status': job.get_status(), 'message': job.exc_info})
-    else:
-        return jsonify({'status': job.get_status()})
     
 @app.route('/generate', methods=['GET'])
 def get_message():
@@ -99,29 +72,6 @@ def delete_bad_words():
     print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
 
 
-def contains_bad_words(text):
-    for word in BAD_WORDS:
-        if word in text.lower():
-            return True
-    return False
-
-
-def generate_and_store_messages():
-    with app.app_context():
-        # メッセージを生成してストックに追加
-        messages = generate_messages("やほー！</s>", num_sentences=1, num_messages=2)
-
-        for message in messages:
-            if contains_bad_words(message):
-                break
-            
-            new_message = MessageStock(message=message)
-            db.session.add(new_message)
-        else:
-            db.session.commit()
-            print("Messages generated and stored")
-
-        
         
         
 if __name__ == '__main__':
