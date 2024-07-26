@@ -74,7 +74,7 @@ def delete_words(word):
     messages_to_update = MessageStock.query.all()
     
     for message in messages_to_update:
-        if word in message:
+        if word in message.message:
             updated_message = message.message.replace(word, "")
             message.message = updated_message
             db.session.add(message)
