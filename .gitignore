@@ -7,3 +7,4 @@ finetuned_gpt2
 *.db
 *.lock
 bad_words.yaml
+*.txt

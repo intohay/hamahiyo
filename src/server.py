@@ -7,6 +7,7 @@ from flask_migrate import Migrate
 import jaconv
 from utilities import load_bad_words, contains_bad_words
 import csv
+import click
 
 # 上の階層の.envファイルを読み込む
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -65,6 +66,23 @@ def delete_bad_words():
     db.session.commit()
 
     print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
+
+
+@app.cli.command("delete_words")
+@click.argument('word')
+def delete_words(word):
+    messages_to_update = MessageStock.query.all()
+    
+    for message in messages_to_update:
+        if word in message:
+            updated_message = message.message.replace(word, "")
+            message.message = updated_message
+            db.session.add(message)
+            print(f"Updated message: {updated_message}")
+
+    db.session.commit()
+    print(f"Processed {len(messages_to_update)} messages.")
+
 
 @app.cli.command("import_messages")
 def import_messages():
