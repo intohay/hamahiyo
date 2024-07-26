@@ -14,9 +14,9 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = seed_sentence
 
     for _ in range(num_messages-1):
-        x = tokenizer.encode(messages, return_tensors="pt",
+        x = tokenizer.encode(messages, return_tensors="pt", add_special_tokens=False)  # 入力
+        x = x.cuda()  # GPU対応
 
-        add_special_tokens=False)  # 入力
         y = model.generate(x, #入力
                         min_length=16,  # 文章の最小長
                         max_length=64,  # 文章の最大長
@@ -31,16 +31,16 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
                         )
 
         messages = tokenizer.batch_decode(y, skip_special_tokens=False)  # 特殊トークンをスキップして文章に変換
-        
-   
-    
-   
 
-    
-    
+
+
+
+
+
+
 
     # special tokenを除く
-    
+
     messages = [message.replace(tokenizer.bos_token, '') for message in messages]
     messages = [message.replace(tokenizer.pad_token, '') for message in messages]
     messages = [message.replace(tokenizer.unk_token, '') for message in messages]
@@ -59,6 +59,11 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     messages = [message.replace(' [NEWLINE]', '\n') for message in messages]
 
     messages = [message.replace('[NEWLINE] ', '\n') for message in messages]
+
+    messages = [message.replace('[NEWLINE]', '\n') for message in messages]
+
+    messages = [message.replace('<emoji>', '') for message in messages]
+    messages = [message.replace('</emoji>', '') for message in messages]
 
     messages = [message.split("</s>") for message in messages]
 
