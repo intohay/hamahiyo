@@ -15,7 +15,6 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
 
     for _ in range(num_messages-1):
         x = tokenizer.encode(messages, return_tensors="pt", add_special_tokens=False)  # 入力
-        x = x.cuda()  # GPU対応
 
         y = model.generate(x, #入力
                         min_length=16,  # 文章の最小長
