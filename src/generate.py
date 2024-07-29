@@ -69,15 +69,17 @@ def generate_messages(seed_sentence, num_sentences=1, num_messages=3):
     # 空の要素は削除
     messages = [[item for item in message if item != ''] for message in messages]
 
-    messages = [message[1:] for message in messages]
+
+    
+    messages = [message if len(message) == 1 else message[1:] for message in messages]
 
     # 前後の空白を削除
     messages = [[item.strip() for item in message] for message in messages]
 
 
-
+    
     return messages
 
 
 if __name__ == '__main__':
-    print(generate_messages("やほー！</s>", num_sentences=10, num_messages=2))
+    print(generate_messages("やほー！", num_sentences=1, num_messages=2))
