@@ -33,16 +33,18 @@ async def yaho(interaction: discord.Interaction):
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
 async def generate(interaction: discord.Interaction, prompt: str):
+    await interaction.response.defer()  # デフォルトの応答を保留
+
     try:
         # gpt-2 を使う generate_messages をインポート
         from generate import generate_messages
         
         # メッセージを生成
         messages = generate_messages(prompt, num_sentences=1, num_messages=2)
-        await interaction.response.send_message(messages[0][0])
+        await interaction.followup.send(messages[0][0])  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
-        await interaction.response.send_message(f'An error occurred: {str(e)}')
+        await interaction.followup.send(f'An error occurred: {str(e)}')
 
 async def main():
     await bot.start(DISCORD_TOKEN)
