@@ -5,7 +5,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import requests
 
-
+import aiohttp
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -23,18 +23,26 @@ async def on_ready():
 
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
-async def yaho(ctx):
-    # https://mambouchan.com/hamahiyo/generateにリクエストを送る
-    response = requests.get('https://mambouchan.com/hamahiyo/generate')
-    message = response.json()['message']
-    await ctx.send(f"やほー！\n{message}")
+async def yaho(interaction: discord.Interaction):
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
+            data = await response.json()
+            message = data['message']
+            await interaction.response.send_message(f"やほー！\n{message}")
 
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
-async def generate(ctx, *, prompt: str):
-    from generate import generate_messages
-    messages = generate_messages(prompt, num_sentences=1, num_messages=2)
-    await ctx.send(messages[0][0])
+async def generate(interaction: discord.Interaction, prompt: str):
+    try:
+        # gpt-2 を使う generate_messages をインポート
+        from generate import generate_messages
+        
+        # メッセージを生成
+        messages = generate_messages(prompt, num_sentences=1, num_messages=2)
+        await interaction.response.send_message(messages[0][0])
+    except Exception as e:
+        # エラーハンドリング
+        await interaction.response.send_message(f'An error occurred: {str(e)}')
 
 async def main():
     await bot.start(DISCORD_TOKEN)
