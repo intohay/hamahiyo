@@ -31,7 +31,7 @@ async def yaho(ctx):
 
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
-async def generate(ctx, *, prompt):
+async def generate(ctx, *, prompt: str):
     from generate import generate_messages
     messages = generate_messages(prompt, num_sentences=1, num_messages=2)
     await ctx.send(messages[0][0])
