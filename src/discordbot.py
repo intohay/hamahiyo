@@ -41,7 +41,11 @@ async def generate(interaction: discord.Interaction, prompt: str):
         
         # メッセージを生成
         messages = generate_messages(prompt, num_sentences=1, num_messages=2)
-        await interaction.followup.send(messages[0][0])  # 非同期にフォローアップメッセージを送信
+        message = messages[0][0]
+        
+        # 先頭のpromptを**太字**にする
+        message = message.replace(prompt, f'**{prompt}**', 1)
+        await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
