@@ -85,8 +85,8 @@ def delete_words(word):
 
 
 @app.cli.command("import_messages")
-def import_messages():
-    file_path = os.path.join(base_dir, '..', 'generated_messages.csv')
+def import_messages(filename):
+    file_path = os.path.join(base_dir, '..', filename)
     
     if not os.path.exists(file_path):
         print(f"No file found at {file_path}")
