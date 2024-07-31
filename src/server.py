@@ -85,14 +85,15 @@ def delete_words(word):
 
 
 @app.cli.command("import_messages")
-def import_messages(filename):
-    file_path = os.path.join(base_dir, '..', filename)
+@click.argument('filepath')
+def import_messages(filepath):
+
     
-    if not os.path.exists(file_path):
-        print(f"No file found at {file_path}")
+    if not os.path.exists(filepath):
+        print(f"No file found at {filepath}")
         return
     
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(filepath, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
             message_text = row[0]
