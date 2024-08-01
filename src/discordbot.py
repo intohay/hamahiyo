@@ -28,7 +28,7 @@ async def yaho(interaction: discord.Interaction):
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
             data = await response.json()
             message = data['message']
-            await interaction.response.send_message(f"やほー！\n{message}")
+            await interaction.response.send_message(message.replace('[SEP]', '\n'))
 
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
@@ -40,9 +40,10 @@ async def generate(interaction: discord.Interaction, prompt: str):
         from generate import generate_messages
         
         # メッセージを生成
-        messages = generate_messages(prompt, num_sentences=1, num_messages=2)
-        message = messages[0][0]
+        messages = generate_messages(prompt, max_length=64, num_sentences=1)
+        message = messages[0]
         
+        message = message.replace('[SEP]', '\n\n')  # [SEP] を改行に変換
         # 先頭のpromptを**太字**にする
         message = message.replace(prompt, f'**{prompt}**', 1)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信

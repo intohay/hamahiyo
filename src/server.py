@@ -46,7 +46,7 @@ def get_message():
         return jsonify({'message': message})
     else:
        # ストックがない場合、新しいメッセージを生成するジョブをキューに追加
-        message = "ストック切れだよー！しばしお待ちを！"
+        message = "やほー！[SEP]ストック切れだよー！しばしお待ちを！"
         # job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
         return jsonify({'message': message})
 
@@ -57,15 +57,17 @@ def delete_bad_words():
     messages_to_delete = MessageStock.query.all()
     bad_words_hiragana = [jaconv.kata2hira(word.lower().strip()) for word in BAD_WORDS]
     
+    count = 0
     for message in messages_to_delete:
         message_text_hiragana = jaconv.kata2hira(message.message.lower())
         if any(word in message_text_hiragana for word in bad_words_hiragana):
             print(message.message)
             db.session.delete(message)
+            count += 1
 
     db.session.commit()
 
-    print(f"Deleted {len(messages_to_delete)} messages containing bad words.")
+    print(f"Deleted {count} messages containing bad words.")
 
 
 @app.cli.command("delete_words")
@@ -113,5 +115,4 @@ if __name__ == '__main__':
         debug_mode = True
 
 
-    app.run(debug=debug_mode)
-   
+    app.run(debug=debug_mode, host='0.0.0.0', port=5001)   

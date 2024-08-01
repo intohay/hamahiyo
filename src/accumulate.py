@@ -43,15 +43,15 @@ class MessageStock(db.Model):
 def generate_and_store_messages():
     with app.app_context():
         # メッセージを生成してストックに追加
-        messages = generate_messages("やほー！</s>", num_sentences=100, num_messages=2)
-        print(messages)
-        for message in messages:
-            for item in message:
-                if contains_bad_words(item):
+        messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
+        
+        for messages in messages_list:
+            for message in messages:
+                if contains_bad_words(message):
                     break
-
-                new_message = MessageStock(message=item)
-                db.session.add(new_message)
+            
+            new_message = MessageStock(message=messages)
+            db.session.add(new_message)
         else:
             db.session.commit()
             print("Messages generated and stored")
