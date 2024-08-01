@@ -44,8 +44,8 @@ async def generate(interaction: discord.Interaction, prompt: str):
         # メッセージを生成
         messages = generate_messages(prompt, max_length=64, num_sentences=1)
         message = messages[0]
-        message = message.split('[SEP]')[0]  # [SEP] 以降の文章を削除
-        
+        message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
+        message = '\n'.join(message_list)
         # 先頭のpromptを**太字**にする
         message = message.replace(prompt, f'**{prompt}**', 1)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
