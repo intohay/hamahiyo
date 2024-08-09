@@ -50,6 +50,17 @@ async def generate(interaction: discord.Interaction, prompt: str):
         message = messages[0]
         message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
         message = '\n'.join(message_list)
+
+        i = 0
+        j = 0
+        while i < len(prompt):
+            if prompt[i] == message[j]:
+                i += 1
+                j += 1
+            else:
+                message = message[:j] + message[j+1:]
+        
+        
         message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
