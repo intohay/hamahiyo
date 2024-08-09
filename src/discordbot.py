@@ -17,6 +17,41 @@ CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='/', intents=intents)
 
+def generate_message_from_prompt(prompt):
+    original_prompt = prompt
+    # 全角の空白は半角に変換
+    prompt = prompt.replace('　', ' ')
+
+    # prompt = prompt.replace('\n\n', '[SEP]')  # \n\nは[SEP]に変換
+    # \nは[NEWLINE]に変換
+    prompt = prompt.replace('\n', '[NEWLINE]')
+    
+
+    # gpt-2 を使う generate_messages をインポート
+    from generate import generate_messages
+    
+    # メッセージを生成
+    messages = generate_messages(prompt, max_length=64, num_sentences=1)
+    message = messages[0]
+    message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
+    message = '\n'.join(message_list)
+    
+    print(f'Prompt: {original_prompt}')
+    print(f'Message: {message}')
+    i = 0
+    j = 0
+    while i < len(original_prompt):
+        p = original_prompt[i]
+        m = message[j]
+        if p.strip() == m.strip():
+            i += 1
+            j += 1
+        else:
+            message = message[:j] + message[j+1:]
+    
+
+    message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
+    return message
 
 
 @bot.event
@@ -42,26 +77,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     try:
-        # gpt-2 を使う generate_messages をインポート
-        from generate import generate_messages
-        
-        # メッセージを生成
-        messages = generate_messages(prompt, max_length=64, num_sentences=1)
-        message = messages[0]
-        message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
-        message = '\n'.join(message_list)
-
-        i = 0
-        j = 0
-        while i < len(prompt):
-            if prompt[i] == message[j]:
-                i += 1
-                j += 1
-            else:
-                message = message[:j] + message[j+1:]
-        
-        
-        message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
+        message = generate_message_from_prompt(prompt)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
@@ -93,4 +109,5 @@ def schedule_daily_yaho():
 async def main():
     await bot.start(DISCORD_TOKEN)
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())
