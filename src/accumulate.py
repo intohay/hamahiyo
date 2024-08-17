@@ -46,9 +46,9 @@ def generate_and_store_messages():
         messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
         
         for messages in messages_list:
-            for message in messages:
-                if contains_bad_words(message):
-                    break
+            joined_messages = ','.join(messages)
+            if contains_bad_words(joined_messages):
+                continue
             
             new_message = MessageStock(message=messages)
             db.session.add(new_message)
