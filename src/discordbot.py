@@ -60,6 +60,11 @@ def generate_message_from_prompt(prompt):
     prompt = normalize_text(prompt)
     message = normalize_text(message)
     message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
+
+    # !は「！」に置換
+    message = message.replace('!', '！')
+    # ?は「？」に置換
+    message = message.replace('?', '？')
     return message
 
 @bot.event
