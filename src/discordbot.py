@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import requests
 from datetime import datetime, time, timedelta
-
+import pdb
 import re
 
 import aiohttp
@@ -16,6 +16,13 @@ CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='/', intents=intents)
+
+import unicodedata
+
+def normalize_text(text):
+    # 全角と半角を統一
+    return unicodedata.normalize('NFKC', text)
+
 
 def generate_message_from_prompt(prompt):
     original_prompt = prompt
@@ -40,19 +47,20 @@ def generate_message_from_prompt(prompt):
     print(f'Message: {message}')
     i = 0
     j = 0
+   
     while i < len(original_prompt):
         p = original_prompt[i]
         m = message[j]
-        if p.strip() == m.strip():
+        if normalize_text(p.strip()) == normalize_text(m.strip()):
             i += 1
             j += 1
         else:
             message = message[:j] + message[j+1:]
     
-
+    prompt = normalize_text(prompt)
+    message = normalize_text(message)
     message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
     return message
-
 
 @bot.event
 async def on_ready():

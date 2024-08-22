@@ -63,4 +63,5 @@ def generate_messages(seed_sentence, min_length=16, max_length=128, num_sentence
 
 
 if __name__ == '__main__':
-    print(generate_messages("<s>やほー！[SEP]", num_sentences=2))
+    from discordbot import generate_message_from_prompt
+    print(generate_message_from_prompt("「やほー！」"))
