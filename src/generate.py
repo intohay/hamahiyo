@@ -63,23 +63,37 @@ load_dotenv()
 
 #     return messages
 
-
-def completion(prompt, is_stop=True):
+def two_messages_completion(prompt):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
 
-    if is_stop:
+    
+
+    for i in range(2):
+
         data = {
             "prompt": prompt,
             "n_predict": 256,
             "stop": ["\t"],
             "repeat_penalty": 1.2,
-        }
-    else:
-        data = {
-            "prompt": prompt,
-            "n_predict": 256,
-            "repeat_penalty": 1.2,
-        }
+        } 
+        response = requests.post(url, json=data)
+
+        if response.status_code == 200:
+            prompt += response.json()['content'] + "\t"
+        else:
+            return f"An error occurred: {response.text}"
+    
+    return prompt
+
+def completion(prompt, is_stop=True):
+    url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
+
+
+    data = {
+        "prompt": prompt,
+        "n_predict": 256,
+        "repeat_penalty": 1.2,
+    }
 
     response = requests.post(url, json=data)
 

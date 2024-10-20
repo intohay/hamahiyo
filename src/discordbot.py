@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, time, timedelta
 import pdb
 import re
-from generate import completion
+from generate import two_messages_completion
 import aiohttp
 load_dotenv()
 
@@ -92,7 +92,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     try:
-        message = f"**{prompt}**" + completion(prompt)
+        message = f"**{prompt}**" + two_messages_completion(prompt)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
