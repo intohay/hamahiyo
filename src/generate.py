@@ -71,12 +71,14 @@ def completion(prompt, is_stop=True):
         data = {
             "prompt": prompt,
             "n_predict": 256,
-            "stop": ["\t"]
+            "stop": ["\t"],
+            "repeat_penalty": 1.2,
         }
     else:
         data = {
             "prompt": prompt,
             "n_predict": 256,
+            "repeat_penalty": 1.2,
         }
 
     response = requests.post(url, json=data)
