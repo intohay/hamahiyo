@@ -44,7 +44,7 @@ def generate_and_store_messages():
     with app.app_context():
         # メッセージを生成してストックに追加
         # messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
-        for i in range(50):
+        for i in range(150):
             messages = "やほー！\t" + completion("やほー！\t")
        
             if contains_bad_words(messages):
