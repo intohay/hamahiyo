@@ -66,7 +66,8 @@ load_dotenv()
 def two_messages_completion(prompt):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
 
-    
+
+    return_text = ""
 
     for i in range(2):
 
@@ -79,11 +80,13 @@ def two_messages_completion(prompt):
         response = requests.post(url, json=data)
 
         if response.status_code == 200:
-            prompt += response.json()['content'] + "\t"
+            content = response.json()['content']
+            prompt += content + "\t"
+            return_text += content + "\t"
         else:
             return f"An error occurred: {response.text}"
     
-    return prompt
+    return return_text[:-1]
 
 def completion(prompt, is_stop=True):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
