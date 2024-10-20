@@ -74,7 +74,7 @@ def two_messages_completion(prompt):
         data = {
             "prompt": prompt,
             "n_predict": 256,
-            "stop": ["\t"],
+            "stop": ["\t", "\n"],
             "repeat_penalty": 1.2,
         } 
         response = requests.post(url, json=data)
