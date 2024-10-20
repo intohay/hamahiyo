@@ -88,7 +88,7 @@ def two_messages_completion(prompt):
     
     return return_text[:-1]
 
-def completion(prompt, is_stop=True):
+def completion(prompt):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
 
 
