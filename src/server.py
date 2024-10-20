@@ -46,7 +46,7 @@ def get_message():
         return jsonify({'message': message})
     else:
        # ストックがない場合、新しいメッセージを生成するジョブをキューに追加
-        message = "やほー！[SEP]ストック切れだよー！しばしお待ちを！"
+        message = "やほー！\tストック切れだよー！しばしお待ちを！"
         # job = q.enqueue(generate_messages, "やほー！</s>", num_sentences=1, num_messages=2)
         return jsonify({'message': message})
 
