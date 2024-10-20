@@ -3,7 +3,7 @@ import sys
 from flask import Flask
 from generate import completion
 from flask_sqlalchemy import SQLAlchemy
-from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 import fcntl
@@ -47,6 +47,7 @@ def generate_and_store_messages():
         messages_list = []
         for i in range(50):
             message = "やほー！\t" + completion("やほー！\t", is_stop=False)
+            print(message)
             messages_list.append(message)
         
         
@@ -57,7 +58,7 @@ def generate_and_store_messages():
             
             new_message = MessageStock(message=messages)
             db.session.add(new_message)
-            print(new_message.message)
+            # print(new_message.message)
         else:
             db.session.commit()
             print("Messages generated and stored")

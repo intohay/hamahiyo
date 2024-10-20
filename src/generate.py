@@ -1,7 +1,6 @@
-from transformers import AutoTokenizer,AutoModelForCausalLM
+# from transformers import AutoTokenizer,AutoModelForCausalLM
 
 import os
-import re
 
 import requests
 from dotenv import load_dotenv
