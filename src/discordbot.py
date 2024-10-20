@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, time, timedelta
 import pdb
 import re
-
+from generate import completion
 import aiohttp
 load_dotenv()
 
@@ -24,48 +24,49 @@ def normalize_text(text):
     return unicodedata.normalize('NFKC', text)
 
 
-def generate_message_from_prompt(prompt):
-    original_prompt = prompt
-    # 全角の空白は半角に変換
-    prompt = prompt.replace('　', ' ')
+# def generate_message_from_prompt(prompt):
+#     original_prompt = prompt
+#     # 全角の空白は半角に変換
+#     prompt = prompt.replace('　', ' ')
 
-    # prompt = prompt.replace('\n\n', '[SEP]')  # \n\nは[SEP]に変換
-    # \nは[NEWLINE]に変換
-    prompt = prompt.replace('\n', '[NEWLINE]')
+#     # prompt = prompt.replace('\n\n', '[SEP]')  # \n\nは[SEP]に変換
+#     # \nは[NEWLINE]に変換
+#     prompt = prompt.replace('\n', '[NEWLINE]')
     
 
-    # gpt-2 を使う generate_messages をインポート
-    from generate import generate_messages
+#     # gpt-2 を使う generate_messages をインポート
+#     from generate import generate_messages
     
-    # メッセージを生成
-    messages = generate_messages(prompt, max_length=64, num_sentences=1)
-    message = messages[0]
-    message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
-    message = '\n'.join(message_list)
+#     # メッセージを生成
+#     messages = generate_messages(prompt, max_length=64, num_sentences=1)
+#     message = messages[0]
+#     message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
+#     message = '\n'.join(message_list)
     
-    print(f'Prompt: {original_prompt}')
-    print(f'Message: {message}')
-    i = 0
-    j = 0
+#     print(f'Prompt: {original_prompt}')
+#     print(f'Message: {message}')
+#     i = 0
+#     j = 0
    
-    while i < len(original_prompt):
-        p = original_prompt[i]
-        m = message[j]
-        if normalize_text(p.strip()) == normalize_text(m.strip()):
-            i += 1
-            j += 1
-        else:
-            message = message[:j] + message[j+1:]
+#     while i < len(original_prompt):
+#         p = original_prompt[i]
+#         m = message[j]
+#         if normalize_text(p.strip()) == normalize_text(m.strip()):
+#             i += 1
+#             j += 1
+#         else:
+#             message = message[:j] + message[j+1:]
     
-    prompt = normalize_text(prompt)
-    message = normalize_text(message)
-    message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
+#     prompt = normalize_text(prompt)
+#     message = normalize_text(message)
+#     message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
 
-    # !は「！」に置換
-    message = message.replace('!', '！')
-    # ?は「？」に置換
-    message = message.replace('?', '？')
-    return message
+#     # !は「！」に置換
+#     message = message.replace('!', '！')
+#     # ?は「？」に置換
+#     message = message.replace('?', '？')
+#     return message
+
 
 @bot.event
 async def on_ready():
@@ -80,9 +81,10 @@ async def yaho(interaction: discord.Interaction):
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
             data = await response.json()
             message = data['message']
-            message_list = message.split('[SEP]')[:3]
+            message_list = message.split('\t')[:3]
             message = '\n\n'.join(message_list)
             await interaction.response.send_message(message)
+
 
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
@@ -90,7 +92,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     try:
-        message = generate_message_from_prompt(prompt)
+        message = f"**{prompt}**" + completion(prompt)
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
@@ -106,7 +108,7 @@ async def daily_yaho():
             async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
                 data = await response.json()
                 message = data['message']
-                message_list = message.split('[SEP]')[:3]
+                message_list = message.split('\t')[:3]
                 message = '\n\n'.join(message_list)
                 await channel.send(message)
 
@@ -124,3 +126,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+

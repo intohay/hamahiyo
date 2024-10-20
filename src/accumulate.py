@@ -1,7 +1,7 @@
 import os
 import sys
 from flask import Flask
-from generate import generate_messages
+from generate import completion
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
@@ -43,14 +43,21 @@ class MessageStock(db.Model):
 def generate_and_store_messages():
     with app.app_context():
         # メッセージを生成してストックに追加
-        messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
+        # messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
+        messages_list = []
+        for i in range(50):
+            message = "やほー！\t" + completion("やほー！\t", is_stop=False)
+            messages_list.append(message)
         
+        
+
         for messages in messages_list:
             if contains_bad_words(messages):
                 continue
             
             new_message = MessageStock(message=messages)
             db.session.add(new_message)
+            print(new_message.message)
         else:
             db.session.commit()
             print("Messages generated and stored")
