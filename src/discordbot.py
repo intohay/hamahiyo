@@ -67,6 +67,32 @@ def normalize_text(text):
 #     message = message.replace('?', '？')
 #     return message
 
+# -tオプションを抽出するための関数
+def extract_t_option(prompt: str, default_value: int = 1.2):
+    """
+    プロンプトから -t <value> オプションを抽出し、オプションの数値とクリーンなプロンプトを返す。
+
+    Parameters:
+    - prompt (str): ユーザーからの入力文字列
+    - default_value (int): tオプションが無かった場合のデフォルト値
+
+    Returns:
+    - t_value (int): tオプションの値（デフォルト値の場合もある）
+    - clean_prompt (str): tオプションを取り除いた後のプロンプト
+    """
+    t_option_pattern = r'-t\s+(\d+)'  # 正規表現パターンで -t <value> を探す
+    t_option_match = re.search(t_option_pattern, prompt)
+
+    if t_option_match:
+        t_value = int(t_option_match.group(1))  # -t の数値を抽出
+        clean_prompt = re.sub(t_option_pattern, '', prompt).strip()  # -tオプション部分を削除
+    else:
+        t_value = default_value  # デフォルト値を使用
+        clean_prompt = prompt.strip()  # オプションが無い場合もクリーンアップ
+
+    return t_value, clean_prompt
+
+
 
 @bot.event
 async def on_ready():
@@ -81,13 +107,17 @@ async def on_message(message: discord.Message):
 
     # Botがメンションされたかどうか確認
     if bot.user.mentioned_in(message):
+
         # メンションされたら応答
         question = message.content.replace(f'<@{bot.user.id}>', '').strip()
+
+        temperature, question = extract_t_option(question)  # -tオプションを抽出
+
         prompt = f"質問返しまーす！\tQ: {question}\nA:"
 
         try:
             # 回答生成
-            answer = n_messages_completion(prompt, 1)
+            answer = n_messages_completion(prompt, num=1, temperature=temperature)
             if answer is None or answer == "":
                 raise ValueError("ごめん、わからないやー！")
         except Exception as e:
@@ -113,8 +143,10 @@ async def yaho(interaction: discord.Interaction):
 async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
+    temperature, clean_prompt = extract_t_option(prompt)  # -tオプションを抽出
+
     try:
-        message = f"**{prompt}**" + n_messages_completion(prompt, 2).replace("\t", "\n")
+        message = f"**{clean_prompt}**" + n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
 
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
