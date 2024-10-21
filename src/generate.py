@@ -63,13 +63,13 @@ load_dotenv()
 
 #     return messages
 
-def two_messages_completion(prompt):
+def n_messages_completion(prompt, n):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
 
 
     return_text = ""
 
-    for i in range(2):
+    for i in range(n):
 
         data = {
             "prompt": prompt,

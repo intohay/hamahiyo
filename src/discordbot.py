@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, time, timedelta
 import pdb
 import re
-from generate import two_messages_completion
+from generate import n_messages_completion
 import aiohttp
 load_dotenv()
 
@@ -74,6 +74,21 @@ async def on_ready():
     await bot.tree.sync()
     schedule_daily_yaho()
 
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    # Botがメンションされたかどうか確認
+    if bot.user.mentioned_in(message):
+        # メンションされたら応答
+        question = message.content.replace(f'<@{bot.user.id}>', '').strip()
+        prompt = f"質問返しまーす！\tQ: {question}\nA:"
+        
+        answer = n_messages_completion(prompt, 1)
+        # メッセージを送信
+        await message.channel.send(answer)
+    
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
@@ -92,12 +107,13 @@ async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     try:
-        message = f"**{prompt}**" + two_messages_completion(prompt).replace("\t", "\n")
+        message = f"**{prompt}**" + n_messages_completion(prompt, 2).replace("\t", "\n")
 
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
+
 
 
 @tasks.loop(hours=24)
