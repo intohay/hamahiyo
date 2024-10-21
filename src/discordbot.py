@@ -81,8 +81,8 @@ async def yaho(interaction: discord.Interaction):
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
             data = await response.json()
             message = data['message']
-            message_list = message.split('\t')[:3]
-            message = '\n\n'.join(message_list)
+            message_list = re.split(r'[\t\n]', message)[:3]
+            message = '\n'.join(message_list)
             await interaction.response.send_message(message)
 
 
@@ -109,8 +109,8 @@ async def daily_yaho():
             async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
                 data = await response.json()
                 message = data['message']
-                message_list = message.split('\t')[:3]
-                message = '\n\n'.join(message_list)
+                message_list = re.split(r'[\t\n]', message)[:3]
+                message = '\n'.join(message_list)
                 await channel.send(message)
 
 def schedule_daily_yaho():
