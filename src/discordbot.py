@@ -75,7 +75,7 @@ async def on_ready():
     schedule_daily_yaho()
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     if message.author == bot.user:
         return
 
@@ -84,10 +84,18 @@ async def on_message(message):
         # メンションされたら応答
         question = message.content.replace(f'<@{bot.user.id}>', '').strip()
         prompt = f"質問返しまーす！\tQ: {question}\nA:"
-        
-        answer = n_messages_completion(prompt, 1)
+
+        try:
+            # 回答生成
+            answer = n_messages_completion(prompt, 1)
+            if answer is None or answer == "":
+                raise ValueError("生成に失敗しました。")
+        except Exception as e:
+            # 失敗した場合のメッセージ
+            answer = f"すみません、{message.author.mention}！質問の回答を生成できませんでした。"
+
         # メッセージを送信
-        await message.channel.send(answer)
+        await message.channel.send(f"{message.author.mention} {answer}")
     
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
