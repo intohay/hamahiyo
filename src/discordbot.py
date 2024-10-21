@@ -92,11 +92,10 @@ async def on_message(message: discord.Message):
                 raise ValueError("生成に失敗しました。")
         except Exception as e:
             # 失敗した場合のメッセージ
-            answer = f"すみません、{message.author.mention}！質問の回答を生成できませんでした。"
+            answer = f"すみません！質問の回答を生成できませんでした。"
 
-        # メッセージを送信
-        await message.channel.send(f"{message.author.mention} {answer}")
-    
+        # メッセージにリプライ
+        await message.reply(answer)
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
