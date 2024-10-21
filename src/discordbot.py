@@ -89,10 +89,10 @@ async def on_message(message: discord.Message):
             # 回答生成
             answer = n_messages_completion(prompt, 1)
             if answer is None or answer == "":
-                raise ValueError("生成に失敗しました。")
+                raise ValueError("ごめん、わからないやー！")
         except Exception as e:
             # 失敗した場合のメッセージ
-            answer = f"すみません！質問の回答を生成できませんでした。"
+            answer = f"ごめん、わからないやー！"
 
         # メッセージにリプライ
         await message.reply(answer)
