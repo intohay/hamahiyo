@@ -68,23 +68,24 @@ def normalize_text(text):
 #     return message
 
 # -tオプションを抽出するための関数
-def extract_t_option(prompt: str, default_value: int = 1.2):
+def extract_t_option(prompt: str, default_value: float = 1.2):
     """
     プロンプトから -t <value> オプションを抽出し、オプションの数値とクリーンなプロンプトを返す。
 
     Parameters:
     - prompt (str): ユーザーからの入力文字列
-    - default_value (int): tオプションが無かった場合のデフォルト値
+    - default_value (float): tオプションが無かった場合のデフォルト値
 
     Returns:
-    - t_value (int): tオプションの値（デフォルト値の場合もある）
+    - t_value (float): tオプションの値（デフォルト値の場合もある）
     - clean_prompt (str): tオプションを取り除いた後のプロンプト
     """
-    t_option_pattern = r'-t\s+(\d+)'  # 正規表現パターンで -t <value> を探す
+    # 正規表現パターンで -t <float> を探す（整数も小数点もサポート）
+    t_option_pattern = r'-t\s+([0-9]*\.?[0-9]+)'
     t_option_match = re.search(t_option_pattern, prompt)
 
     if t_option_match:
-        t_value = int(t_option_match.group(1))  # -t の数値を抽出
+        t_value = float(t_option_match.group(1))  # -t の数値を float で抽出
         clean_prompt = re.sub(t_option_pattern, '', prompt).strip()  # -tオプション部分を削除
     else:
         t_value = default_value  # デフォルト値を使用
