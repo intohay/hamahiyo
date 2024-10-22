@@ -95,7 +95,7 @@ def extract_t_option(prompt: str, default_value: float = 1.2):
 
 # -dオプションを抽出するための関数(デバッグ用)
 def extract_d_option(prompt: str):
-    d_option_pattern = r'-d\s+'
+    d_option_pattern = r'-d'
     d_option_match = re.search(d_option_pattern, prompt)
 
     if d_option_match:
@@ -136,7 +136,8 @@ async def on_message(message: discord.Message):
             # 回答生成
             answer = n_messages_completion(prompt, num=1, temperature=temperature)
             if answer is None or answer == "":
-                raise ValueError("ごめん、わからないやー！")
+                answer = "ん？なんか言った？"
+           
         except Exception as e:
             if is_debug:
                 answer = f"An error occurred: {str(e)}"
@@ -202,4 +203,5 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+    # print(extract_d_option("こんにちは -d"))
 
