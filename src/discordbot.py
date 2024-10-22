@@ -131,19 +131,28 @@ async def on_message(message: discord.Message):
 
 
         prompt = f"質問返しまーす！\tQ: {question}\nA:"
+        
+        try_count = 0
+        max_retries = 3
+        answer = None
 
-        try:
-            # 回答生成
-            answer = n_messages_completion(prompt, num=1, temperature=temperature)
-            if answer is None or answer == "":
-                answer = "ん？なんか言った？"
-           
-        except Exception as e:
-            if is_debug:
-                answer = f"An error occurred: {str(e)}"
-            else:
-                # 失敗した場合のメッセージ
-                answer = f"ごめん、わからないやー！"
+        while try_count < max_retries:
+            try:
+                # 回答生成
+                answer = n_messages_completion(prompt, num=1, temperature=temperature)
+                if answer and answer != "":
+                    break  # 成功したらループを抜ける
+                else:
+                    answer = "ん？なんか言った？"
+            except Exception as e:
+                if is_debug:
+                    answer = f"An error occurred: {str(e)}"
+                    break  # デバッグモードなら即座に終了
+            try_count += 1
+
+        # 3回試しても失敗した場合のデフォルトメッセージ
+        if not answer or answer == "":
+            answer = "ごめん、わからないやー！"
 
         # メッセージにリプライ
         await message.reply(answer)
