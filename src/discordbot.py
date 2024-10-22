@@ -93,6 +93,20 @@ def extract_t_option(prompt: str, default_value: float = 1.2):
 
     return t_value, clean_prompt
 
+# -dオプションを抽出するための関数(デバッグ用)
+def extract_d_option(prompt: str):
+    d_option_pattern = r'-d\s+'
+    d_option_match = re.search(d_option_pattern, prompt)
+
+    if d_option_match:
+        # -dオプションを取り除く
+        clean_prompt = re.sub(d_option_pattern, '', prompt).strip()
+
+        return True, clean_prompt
+    
+    return False, prompt
+
+
 
 
 @bot.event
@@ -112,7 +126,9 @@ async def on_message(message: discord.Message):
         # メンションされたら応答
         question = message.content.replace(f'<@{bot.user.id}>', '').strip()
 
+        is_debug, question = extract_d_option(question)  # -dオプションを抽出
         temperature, question = extract_t_option(question)  # -tオプションを抽出
+
 
         prompt = f"質問返しまーす！\tQ: {question}\nA:"
 
@@ -122,8 +138,11 @@ async def on_message(message: discord.Message):
             if answer is None or answer == "":
                 raise ValueError("ごめん、わからないやー！")
         except Exception as e:
-            # 失敗した場合のメッセージ
-            answer = f"ごめん、わからないやー！"
+            if is_debug:
+                answer = f"An error occurred: {str(e)}"
+            else:
+                # 失敗した場合のメッセージ
+                answer = f"ごめん、わからないやー！"
 
         # メッセージにリプライ
         await message.reply(answer)
