@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, time, timedelta
 import pdb
 import re
-from generate import n_messages_completion
+from generate import n_messages_completion, tokenize
 import aiohttp
 load_dotenv()
 
@@ -107,7 +107,24 @@ def extract_d_option(prompt: str):
     return False, prompt
 
 
+def retry_completion(prompt, num=1, temperature=1.2, max_retries=3):
+    try_count = 0
+    answer = None
 
+    while try_count < max_retries:
+        try:
+            # 回答生成
+            answer = n_messages_completion(prompt, num=num, temperature=temperature)
+            if answer and answer != "":
+                break  # 成功したらループを抜ける
+            else:
+                answer = "もう一回言ってみて！"
+        except Exception as e:
+            answer = f"An error occurred: {str(e)}"
+            break  # デバッグモードなら即座に終了
+        try_count += 1
+
+    return answer
 
 @bot.event
 async def on_ready():
@@ -120,8 +137,11 @@ async def on_message(message: discord.Message):
     if message.author == bot.user:
         return
 
+    is_mention = bot.user.mentioned_in(message)
+    is_reply = message.reference is not None and message.reference.resolved.author == bot.user
+
     # Botがメンションされたかどうか確認
-    if bot.user.mentioned_in(message):
+    if is_mention or is_reply:
 
         # メンションされたら応答
         question = message.content.replace(f'<@{bot.user.id}>', '').strip()
@@ -130,29 +150,20 @@ async def on_message(message: discord.Message):
         temperature, question = extract_t_option(question)  # -tオプションを抽出
 
 
-        prompt = f"質問返しまーす！\tQ: {question}\nA:"
-        
-        try_count = 0
-        max_retries = 3
-        answer = None
+        if is_reply:
+            prompt = "質問返しまーす！\t"
+            previous_message = await message.channel.fetch_message(message.reference.message_id)
+            previous_answer = previous_message.content
+            more_previous_message = await message.channel.fetch_message(previous_message.reference.message_id)
+            previous_question = more_previous_message.content
+            prompt += f"Q: {previous_question}\nA: {previous_answer}\nQ: {question}\nA:"
+            print(prompt)
+            
+        else:
+            prompt = f"質問返しまーす！\tQ: {question}\nA:"
 
-        while try_count < max_retries:
-            try:
-                # 回答生成
-                answer = n_messages_completion(prompt, num=1, temperature=temperature)
-                if answer and answer != "":
-                    break  # 成功したらループを抜ける
-                else:
-                    answer = "ん？なんか言った？"
-            except Exception as e:
-                if is_debug:
-                    answer = f"An error occurred: {str(e)}"
-                    break  # デバッグモードなら即座に終了
-            try_count += 1
+        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3)
 
-        # 3回試しても失敗した場合のデフォルトメッセージ
-        if not answer or answer == "":
-            answer = "ごめん、わからないやー！"
 
         # メッセージにリプライ
         await message.reply(answer)

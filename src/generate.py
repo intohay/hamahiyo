@@ -74,7 +74,7 @@ def n_messages_completion(prompt, num=2, temperature=1.2):
         data = {
             "prompt": prompt,
             "n_predict": 256,
-            "stop": ["\t", "\n"],
+            "stop": ["\t", "\n", "Q:"],
             "repeat_penalty": 1.2,
             "temperature": temperature
         } 
@@ -106,7 +106,19 @@ def completion(prompt):
     else:
         return f"An error occurred: {response.text}"
     
+def tokenize(text):
+    url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/tokenize"
 
+    data = {
+        "content": text
+    }
+
+    response = requests.post(url, json=data)
+
+    if response.status_code == 200:
+        return response.json()['tokens']
+    else:
+        return f"An error occurred: {response.text}"
 
 
 if __name__ == '__main__':
