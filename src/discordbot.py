@@ -161,7 +161,7 @@ async def on_message(message: discord.Message):
             prompt = f"Q: {question}\nA:"
             while current_message.reference is not None:
                 
-                previous_message = await message.channel.fetch_message(message.reference.message_id)
+                previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
                 previous_answer = previous_message.content
 
                 if previous_message.reference:
