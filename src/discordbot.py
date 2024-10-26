@@ -155,10 +155,10 @@ async def on_message(message: discord.Message):
             previous_message = await message.channel.fetch_message(message.reference.message_id)
             previous_answer = previous_message.content
             more_previous_message = await message.channel.fetch_message(previous_message.reference.message_id)
-            previous_question = more_previous_message.content
+            previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
             prompt += f"Q: {previous_question}\nA: {previous_answer}\nQ: {question}\nA:"
             print(prompt)
-            
+
         else:
             prompt = f"質問返しまーす！\tQ: {question}\nA:"
 
