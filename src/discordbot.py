@@ -140,6 +140,10 @@ async def on_message(message: discord.Message):
     is_mention = bot.user.mentioned_in(message)
     is_reply = message.reference is not None and message.reference.resolved.author == bot.user
 
+    # トークン数カウント用の関数
+    def get_token_count(text):
+        return len(tokenize(text))
+    
     # Botがメンションされたかどうか確認
     if is_mention or is_reply:
 
@@ -151,17 +155,35 @@ async def on_message(message: discord.Message):
 
 
         if is_reply:
-            prompt = "質問返しまーす！\t"
-            previous_message = await message.channel.fetch_message(message.reference.message_id)
-            previous_answer = previous_message.content
-            more_previous_message = await message.channel.fetch_message(previous_message.reference.message_id)
-            previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
-            prompt += f"Q: {previous_question}\nA: {previous_answer}\nQ: {question}\nA:"
-            print(prompt)
+
+            current_message = message
+            system_prompt = "質問返しまーす！\t"
+            prompt = f"Q: {question}\nA:"
+            while current_message.reference is not None:
+                
+                previous_message = await message.channel.fetch_message(message.reference.message_id)
+                previous_answer = previous_message.content
+
+                if previous_message.reference:
+                    more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
+                    previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
+                else:
+                    break
+
+                new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
+                if get_token_count(system_prompt + new_prompt) > 200:
+                    break
+                prompt = new_prompt
+
+                current_message = more_previous_message
+            
+            prompt = system_prompt + prompt
+            
 
         else:
             prompt = f"質問返しまーす！\tQ: {question}\nA:"
 
+        print(prompt)
         answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3)
 
 
