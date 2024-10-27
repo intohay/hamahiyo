@@ -107,14 +107,14 @@ def extract_d_option(prompt: str):
     return False, prompt
 
 
-def retry_completion(prompt, num=1, temperature=1.2, max_retries=3):
+def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", "\n", "Q:"]):
     try_count = 0
     answer = None
 
     while try_count < max_retries:
         try:
             # 回答生成
-            answer = n_messages_completion(prompt, num=num, temperature=temperature)
+            answer = n_messages_completion(prompt, num=num, temperature=temperature, stop=stop)
             if answer and answer != "":
                 break  # 成功したらループを抜ける
             else:
@@ -157,7 +157,7 @@ async def on_message(message: discord.Message):
         if is_reply:
 
             current_message = message
-            system_prompt = "質問返しまーす！\t"
+            # system_prompt = "質問返しまーす！\t"
             prompt = f"Q: {question}\nA:"
             while current_message.reference is not None:
                 
@@ -171,20 +171,20 @@ async def on_message(message: discord.Message):
                     break
 
                 new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
-                if get_token_count(system_prompt + new_prompt) > 200:
+                if get_token_count(new_prompt) > 200:
                     break
                 prompt = new_prompt
 
                 current_message = more_previous_message
             
-            prompt = system_prompt + prompt
+            
             
 
         else:
-            prompt = f"質問返しまーす！\tQ: {question}\nA:"
+            prompt = f"Q: {question}\nA:"
 
         print(prompt)
-        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3)
+        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
 
 
         # メッセージにリプライ

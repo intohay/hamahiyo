@@ -63,7 +63,7 @@ load_dotenv()
 
 #     return messages
 
-def n_messages_completion(prompt, num=2, temperature=1.2):
+def n_messages_completion(prompt, num=2, temperature=1.2, stop=["\t", "\n", "Q:"]):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:8614/completion"
 
 
@@ -74,7 +74,7 @@ def n_messages_completion(prompt, num=2, temperature=1.2):
         data = {
             "prompt": prompt,
             "n_predict": 256,
-            "stop": ["\t", "\n", "Q:"],
+            "stop": stop,
             "repeat_penalty": 1.2,
             "temperature": temperature
         } 
