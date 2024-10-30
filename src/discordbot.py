@@ -207,6 +207,9 @@ async def yaho(interaction: discord.Interaction):
 
 @bot.tree.command(name='voice', description='やっほー！から始まる音声を返します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def yaho_voice(interaction: discord.Interaction):
+    # 応答を保留
+    await interaction.response.defer()
+
     async with aiohttp.ClientSession() as session:
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
             data = await response.json()
@@ -214,12 +217,16 @@ async def yaho_voice(interaction: discord.Interaction):
             message_list = re.split(r'[\t\n]', message)[:3]
             message = '\n'.join(message_list)
 
+            # テキストを音声に変換
             audio_content = text_to_speech(message)
 
+            # 音声ファイルを一時保存
             with open('output.wav', 'wb') as f:
                 f.write(audio_content)
             
-            await interaction.response.send_message(file=File("output.wav"))
+            # followupで音声ファイルを送信
+            await interaction.followup.send(file=File("output.wav"))
+
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
 async def generate(interaction: discord.Interaction, prompt: str):
