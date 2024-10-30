@@ -10,6 +10,7 @@ import re
 from discord import File
 from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
+from utilities import contains_bad_words
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -116,7 +117,7 @@ def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", 
         try:
             # 回答生成
             answer = n_messages_completion(prompt, num=num, temperature=temperature, stop=stop)
-            if answer and answer != "":
+            if answer and answer != "" and not contains_bad_words(answer):
                 break  # 成功したらループを抜ける
             else:
                 answer = "もう一回言ってみて！"
