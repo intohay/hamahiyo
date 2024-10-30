@@ -120,8 +120,21 @@ def tokenize(text):
     else:
         return f"An error occurred: {response.text}"
 
+def text_to_speech(text):
+    url = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/voice"
+
+    # GETリクエスト
+    response = requests.get(url, params={"text": text, "model_name": "hamahiyo"})
+
+
+    if response.status_code == 200:
+        # audio/wavが返ってくる
+        return response.content
+    else:
+        return f"An error occurred: {response.text}"
 
 if __name__ == '__main__':
     # from discordbot import generate_message_from_prompt
     # print(generate_message_from_prompt("「やほー！」"))
-    completion("やほー！\t")
+    # completion("やほー！\t")
+    print(text_to_speech("やっほー！ひよたんでーす！"))

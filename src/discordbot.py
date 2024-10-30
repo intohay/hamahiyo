@@ -7,7 +7,8 @@ import requests
 from datetime import datetime, time, timedelta
 import pdb
 import re
-from generate import n_messages_completion, tokenize
+from discord import File
+from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
 load_dotenv()
 
@@ -200,7 +201,21 @@ async def yaho(interaction: discord.Interaction):
             message = '\n'.join(message_list)
             await interaction.response.send_message(message)
 
+@bot.tree.command(name='voice', description='やっほー！から始まる音声を返します')
+async def yaho_voice(interaction: discord.Interaction):
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
+            data = await response.json()
+            message = data['message']
+            message_list = re.split(r'[\t\n]', message)[:3]
+            message = '\n'.join(message_list)
 
+            audio_content = text_to_speech(message)
+
+            with open('output.wav', 'wb') as f:
+                f.write(audio_content)
+            
+            await interaction.response.send_message(file=File("output.wav"))
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
 async def generate(interaction: discord.Interaction, prompt: str):
