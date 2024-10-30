@@ -189,7 +189,7 @@ async def on_message(message: discord.Message):
             prompt = f"Q: {question}\nA:"
 
         print(prompt)
-        # answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
         # print(answer)
 
         # 再生完了後のコールバック関数
@@ -206,34 +206,33 @@ async def on_message(message: discord.Message):
         if message.guild.voice_client:
 
             try:
-                print('voice')
-                # audio_content = text_to_speech(answer)
-                audio_file_path = 'response.wav'
+                
+                audio_content = text_to_speech(answer)
+                audio_file_path = f"output_{message.id}.wav"
 
                 # 音声ファイルを保存
-                # with open(audio_file_path, 'wb') as f:
-                #     f.write(audio_content)
+                with open(audio_file_path, 'wb') as f:
+                    f.write(audio_content)
 
                 # 音声をボイスチャンネルで再生
                 vc = message.guild.voice_client
                 source = discord.FFmpegPCMAudio(audio_file_path)
-                print(vc.is_playing())
+                
                 vc.play(source, after=after_playing)
-                print("play")
+                
                 # 再生が完了するまで待機
                 while vc.is_playing():
                     print('playing')
                     await asyncio.sleep(1)
                 print('done')
-                # 再生完了後ファイル削除
-                os.remove(audio_file_path)
+                
             except Exception as e:
                 print(e)
 
 
 
         # メッセージにリプライ
-        # await message.reply(answer)
+        await message.reply(answer)
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
