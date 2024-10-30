@@ -203,7 +203,7 @@ async def on_message(message: discord.Message):
                 os.remove(audio_file_path)
                 print("Deleted audio file:", audio_file_path)
 
-        if message.guild.voice_client:
+        if message.guild.voice_client and message.author.voice and message.author.voice.channel:
 
             try:
                 
