@@ -236,7 +236,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
 # ボイスチャンネルに参加するコマンド
-@bot.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.tree.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def join_voice(ctx):
     if ctx.author.voice:  # コマンド実行者がボイスチャンネルにいるか確認
         channel = ctx.author.voice.channel
@@ -246,7 +246,7 @@ async def join_voice(ctx):
         await ctx.send("ボイスチャンネルに接続していません！")
 
 # ボイスチャンネルから退出するコマンド
-@bot.command(name='leave', description='ボイスチャンネルから退出します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.tree.command(name='leave', description='ボイスチャンネルから退出します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def leave_voice(ctx):
     if ctx.voice_client:  # Botがボイスチャンネルに接続しているか確認
         await ctx.voice_client.disconnect()
