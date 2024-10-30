@@ -291,9 +291,9 @@ async def join_voice(interaction: discord.Interaction):
         if interaction.user.voice:  # コマンド実行者がボイスチャンネルにいるか確認
             channel = interaction.user.voice.channel
             await channel.connect()
-            await interaction.response.send_message(f'{channel.name} に参加しました！')
+            await interaction.response.send_message(f'{channel.name}に遊びに来たよ！')
         else:
-            await interaction.response.send_message("ボイスチャンネルに接続していません！")
+            await interaction.response.send_message("ボイスチャンネルに接続してから呼んでね！")
     except Exception as e:
         print(e)
 
@@ -302,9 +302,9 @@ async def join_voice(interaction: discord.Interaction):
 async def leave_voice(interaction: discord.Interaction):
     if interaction.guild.voice_client:  # Botがボイスチャンネルに接続しているか確認
         await interaction.guild.voice_client.disconnect()
-        await interaction.response.send_message("ボイスチャンネルから退出しました。")
+        await interaction.response.send_message("ばいころまる〜")
     else:
-        await interaction.response.send_message("ボイスチャンネルに接続していません！")
+        await interaction.response.send_message("ボイスチャンネルに接続していないよ！")
 
 @tasks.loop(hours=24)
 async def daily_yaho():
