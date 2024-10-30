@@ -216,7 +216,9 @@ async def yaho_voice(interaction: discord.Interaction):
             message = data['message']
             message_list = re.split(r'[\t\n]', message)[:3]
             message = '\n'.join(message_list)
-
+            # 「やほ」を「やっほ」に変換
+            message = message.replace('やほ', 'やっほ')
+            
             # テキストを音声に変換
             audio_content = text_to_speech(message)
 
