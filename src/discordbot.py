@@ -130,7 +130,7 @@ def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
-    await bot.tree.sync(guild=discord.Object(id={int(os.getenv('GUILD_ID'))}))
+    await bot.tree.sync(guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
     schedule_daily_yaho()
 
 @bot.event
