@@ -195,8 +195,7 @@ async def on_message(message: discord.Message):
         # メッセージにリプライ
         await message.reply(answer)
 
-@bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
-@discord.app_commands.guilds(discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.tree.command(name='yaho', description='やほー！から始まる文章を返します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def yaho(interaction: discord.Interaction):
     async with aiohttp.ClientSession() as session:
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
@@ -206,8 +205,7 @@ async def yaho(interaction: discord.Interaction):
             message = '\n'.join(message_list)
             await interaction.response.send_message(message)
 
-@bot.tree.command(name='voice', description='やっほー！から始まる音声を返します')
-@discord.app_commands.guilds(discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.tree.command(name='voice', description='やっほー！から始まる音声を返します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def yaho_voice(interaction: discord.Interaction):
     async with aiohttp.ClientSession() as session:
         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
@@ -223,8 +221,7 @@ async def yaho_voice(interaction: discord.Interaction):
             
             await interaction.response.send_message(file=File("output.wav"))
 
-@bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
-@discord.app_commands.guilds(discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.tree.command(name='prompt', description='指定した文章から文章を生成します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def generate(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
@@ -239,8 +236,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
 # ボイスチャンネルに参加するコマンド
-@bot.command(name='join', description='指定のボイスチャンネルに参加します')
-@discord.app_commands.guilds(discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def join_voice(ctx):
     if ctx.author.voice:  # コマンド実行者がボイスチャンネルにいるか確認
         channel = ctx.author.voice.channel
@@ -250,8 +246,7 @@ async def join_voice(ctx):
         await ctx.send("ボイスチャンネルに接続していません！")
 
 # ボイスチャンネルから退出するコマンド
-@bot.command(name='leave', description='ボイスチャンネルから退出します')
-@discord.app_commands.guilds(discord.Object(id=int(os.getenv('GUILD_ID'))))
+@bot.command(name='leave', description='ボイスチャンネルから退出します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def leave_voice(ctx):
     if ctx.voice_client:  # Botがボイスチャンネルに接続しているか確認
         await ctx.voice_client.disconnect()
