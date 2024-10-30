@@ -288,7 +288,13 @@ async def generate(interaction: discord.Interaction, prompt: str):
 @bot.tree.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def join_voice(interaction: discord.Interaction):
     try:
-        if interaction.user.voice:  # コマンド実行者がボイスチャンネルにいるか確認
+        # すでにボットがボイスチャンネルに接続しているか確認
+        if interaction.guild.voice_client:
+            await interaction.response.send_message("もうボイスチャンネルにいるよ！")
+            return
+
+        # コマンド実行者がボイスチャンネルにいるか確認
+        if interaction.user.voice:
             channel = interaction.user.voice.channel
             await channel.connect()
             await interaction.response.send_message(f'{channel.name}に遊びに来たよ！')
