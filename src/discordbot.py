@@ -189,11 +189,51 @@ async def on_message(message: discord.Message):
             prompt = f"Q: {question}\nA:"
 
         print(prompt)
-        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+        # answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+        # print(answer)
+
+        # 再生完了後のコールバック関数
+        def after_playing(error):
+            if error:
+                print("Error occurred during playback:", error)
+            else:
+                print("Finished playing audio")
+            # 再生完了後にファイル削除
+            if os.path.exists(audio_file_path):
+                os.remove(audio_file_path)
+                print("Deleted audio file:", audio_file_path)
+
+        if message.guild.voice_client:
+
+            try:
+                print('voice')
+                # audio_content = text_to_speech(answer)
+                audio_file_path = 'response.wav'
+
+                # 音声ファイルを保存
+                # with open(audio_file_path, 'wb') as f:
+                #     f.write(audio_content)
+
+                # 音声をボイスチャンネルで再生
+                vc = message.guild.voice_client
+                source = discord.FFmpegPCMAudio(audio_file_path)
+                print(vc.is_playing())
+                vc.play(source, after=after_playing)
+                print("play")
+                # 再生が完了するまで待機
+                while vc.is_playing():
+                    print('playing')
+                    await asyncio.sleep(1)
+                print('done')
+                # 再生完了後ファイル削除
+                os.remove(audio_file_path)
+            except Exception as e:
+                print(e)
+
 
 
         # メッセージにリプライ
-        await message.reply(answer)
+        # await message.reply(answer)
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
@@ -218,7 +258,7 @@ async def yaho_voice(interaction: discord.Interaction):
             message = '\n'.join(message_list)
             # 「やほ」を「やっほ」に変換
             message = message.replace('やほ', 'やっほ')
-            
+
             # テキストを音声に変換
             audio_content = text_to_speech(message)
 
@@ -292,6 +332,8 @@ async def main():
     await bot.start(DISCORD_TOKEN)
 
 if __name__ == '__main__':
+    import discord.opus
+    print("Opus loaded:", discord.opus.is_loaded()) 
     asyncio.run(main())
     # print(extract_d_option("こんにちは -d"))
 
