@@ -237,23 +237,25 @@ async def generate(interaction: discord.Interaction, prompt: str):
 
 # ボイスチャンネルに参加するコマンド
 @bot.tree.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-async def join_voice(ctx):
-    if ctx.author.voice:  # コマンド実行者がボイスチャンネルにいるか確認
-        channel = ctx.author.voice.channel
-        await channel.connect()
-        await ctx.send(f'{channel.name} に参加しました！')
-    else:
-        await ctx.send("ボイスチャンネルに接続していません！")
+async def join_voice(interaction: discord.Interaction):
+    try:
+        if interaction.user.voice:  # コマンド実行者がボイスチャンネルにいるか確認
+            channel = interaction.user.voice.channel
+            await channel.connect()
+            await interaction.response.send_message(f'{channel.name} に参加しました！')
+        else:
+            await interaction.response.send_message("ボイスチャンネルに接続していません！")
+    except Exception as e:
+        print(e)
 
-# ボイスチャンネルから退出するコマンド
+    # ボイスチャンネルから退出するコマンド
 @bot.tree.command(name='leave', description='ボイスチャンネルから退出します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-async def leave_voice(ctx):
-    if ctx.voice_client:  # Botがボイスチャンネルに接続しているか確認
-        await ctx.voice_client.disconnect()
-        await ctx.send("ボイスチャンネルから退出しました。")
+async def leave_voice(interaction: discord.Interaction):
+    if interaction.guild.voice_client:  # Botがボイスチャンネルに接続しているか確認
+        await interaction.guild.voice_client.disconnect()
+        await interaction.response.send_message("ボイスチャンネルから退出しました。")
     else:
-        await ctx.send("ボイスチャンネルに接続していません！")
-
+        await interaction.response.send_message("ボイスチャンネルに接続していません！")
 
 @tasks.loop(hours=24)
 async def daily_yaho():
