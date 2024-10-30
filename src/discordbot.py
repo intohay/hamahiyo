@@ -231,6 +231,24 @@ async def generate(interaction: discord.Interaction, prompt: str):
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
+# ボイスチャンネルに参加するコマンド
+@bot.command(name='join', description='指定のボイスチャンネルに参加します')
+async def join_voice(ctx):
+    if ctx.author.voice:  # コマンド実行者がボイスチャンネルにいるか確認
+        channel = ctx.author.voice.channel
+        await channel.connect()
+        await ctx.send(f'{channel.name} に参加しました！')
+    else:
+        await ctx.send("ボイスチャンネルに接続していません！")
+
+# ボイスチャンネルから退出するコマンド
+@bot.command(name='leave', description='ボイスチャンネルから退出します')
+async def leave_voice(ctx):
+    if ctx.voice_client:  # Botがボイスチャンネルに接続しているか確認
+        await ctx.voice_client.disconnect()
+        await ctx.send("ボイスチャンネルから退出しました。")
+    else:
+        await ctx.send("ボイスチャンネルに接続していません！")
 
 
 @tasks.loop(hours=24)

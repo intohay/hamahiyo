@@ -8,3 +8,4 @@ finetuned_gpt2
 *.lock
 bad_words.yaml
 *.txt
+*.wav
