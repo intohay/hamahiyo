@@ -10,7 +10,8 @@ import re
 from discord import File
 from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
-from utilities import contains_bad_words
+from utilities import contains_bad_words, extract_name_from_blog, scrape_blog
+from reading import text_to_audio
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -285,6 +286,61 @@ async def generate(interaction: discord.Interaction, prompt: str):
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
+@bot.tree.command(name='read', description='指定したURLのブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def read_blog(interaction: discord.Interaction, url: str):
+    # https://www.hinatazaka46.com/s/official/diary/detail/57856?ima=0000&cd=member
+    # から57856を抽出
+
+    blog_id = re.search(r'detail/(\d+)', url).group(1)
+
+    # data/{blog_id}.mp3 が存在するか確認
+    audio_file_path = f'data/{blog_id}.mp3'
+    if not os.path.exists(audio_file_path):
+        #　存在しない場合、その旨を返信
+        await interaction.response.send_message("音声ファイルがまだないよ！")
+        return
+    else:
+        # 存在する場合、botがボイスチャンネルに接続して、接続している場合は再生
+        # 接続していない場合は、ボイスチャンネルに接続する旨を返信
+        if interaction.guild.voice_client:
+            vc = interaction.guild.voice_client
+        else:
+            await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+            return
+        
+        await interaction.response.send_message("読むね！")
+
+        source = discord.FFmpegPCMAudio(audio_file_path)
+        vc.play(source)
+
+        # 再生が完了するまで待機
+        while vc.is_playing():
+            print('playing')
+            await asyncio.sleep(1)
+        print('done')
+
+@bot.tree.command(name='convert', description='指定したURLのブログを音声に変換します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def convert_blog(interaction: discord.Interaction, url: str):
+
+    name = extract_name_from_blog(url)
+    if name != "濱岸 ひより":
+        await interaction.response.send_message("ひよたんのブログ以外は読まないよ！")
+        return
+    
+    await interaction.response.defer()  # デフォルトの応答を保留
+
+    blog_text = scrape_blog(url)
+    blog_id = re.search(r'detail/(\d+)', url).group(1)
+
+    # ブログのテキストを音声に変換
+    text_to_audio(blog_text, f'data/{blog_id}.mp3')
+
+    await interaction.followup.send("読む準備ができたよ！")
+
+
+
+    
+
 # ボイスチャンネルに参加するコマンド
 @bot.tree.command(name='join', description='指定のボイスチャンネルに参加します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def join_voice(interaction: discord.Interaction):
@@ -339,8 +395,7 @@ async def main():
     await bot.start(DISCORD_TOKEN)
 
 if __name__ == '__main__':
-    import discord.opus
-    print("Opus loaded:", discord.opus.is_loaded()) 
+    
     asyncio.run(main())
-    # print(extract_d_option("こんにちは -d"))
+    
 
