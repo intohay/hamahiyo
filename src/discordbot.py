@@ -10,7 +10,7 @@ import re
 from discord import File
 from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
-from utilities import contains_bad_words, extract_name_from_blog, scrape_blog
+from utilities import contains_bad_words, extract_name_from_blog, scrape_blog, extract_date_from_blog
 from reading import text_to_audio
 
 load_dotenv()
@@ -293,9 +293,11 @@ async def read_blog(interaction: discord.Interaction, url: str):
     # から57856を抽出
 
     blog_id = re.search(r'detail/(\d+)', url).group(1)
-
+    date_str = extract_date_from_blog(url)
+    
     # data/{blog_id}.mp3 が存在するか確認
-    audio_file_path = f'data/{blog_id}.mp3'
+    audio_file_path = f'data/{date_str}-{blog_id}.mp3'
+
     if not os.path.exists(audio_file_path):
         #　存在しない場合、その旨を返信
         await interaction.response.send_message("音声ファイルがまだないよ！")
@@ -329,8 +331,11 @@ async def convert_blog(interaction: discord.Interaction, url: str):
         return
     
     blog_id = re.search(r'detail/(\d+)', url).group(1)
-    
-    if os.path.exists(f'data/{blog_id}.mp3'):
+    date_str = extract_date_from_blog(url)
+
+    file_path = f'data/{date_str}-{blog_id}.mp3'
+
+    if os.path.exists(file_path):
         await interaction.response.send_message("音声ファイルがすでにあるよ！")
         return
     
@@ -338,7 +343,7 @@ async def convert_blog(interaction: discord.Interaction, url: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     blog_text = await asyncio.to_thread(scrape_blog, url)
-    await asyncio.to_thread(text_to_audio, blog_text, f'data/{blog_id}.mp3')
+    await asyncio.to_thread(text_to_audio, blog_text, file_path)
 
     await interaction.followup.send("読む準備ができたよ！")
 

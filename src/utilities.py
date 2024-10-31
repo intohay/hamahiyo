@@ -4,7 +4,7 @@ import yaml
 import requests
 from bs4 import BeautifulSoup
 import re
-
+from datetime import datetime
 base_dir = os.path.abspath(os.path.dirname(__file__))
 bad_words_path = os.path.join(base_dir, '..', 'bad_words.yaml')
 
@@ -65,11 +65,27 @@ def scrape_blog(url):
     full_text = re.sub(r"http\S+", "", full_text)
     # @で始まる英数字を削除
     full_text = re.sub(r"@\w+", "", full_text)
-    
+
 
 
     return full_text
 
+def extract_date_from_blog(url):
+    # ブログをスクレイピング(テキストのみ)
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # ブログの本文を取得
+    article_div = soup.find("div", class_="c-blog-article__date")
+    date_str = article_div.text.strip()
+    # 2024.10.28 14:49という形式になっているので、datetimeに変換し、2024-10-28という形式に変換
+    date_str = datetime.strptime(date_str, "%Y.%m.%d %H:%M").strftime("%Y-%m-%d")
+
+    return date_str
+
+    
+
+    return date.strip()
 if __name__ == "__main__":
     url = "https://www.hinatazaka46.com/s/official/diary/detail/57669?ima=0000&cd=member"
     print(scrape_blog(url))
