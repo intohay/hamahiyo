@@ -12,6 +12,7 @@ from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
 from utilities import contains_bad_words, extract_name_from_blog, scrape_blog
 from reading import text_to_audio
+
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -336,11 +337,8 @@ async def convert_blog(interaction: discord.Interaction, url: str):
 
     await interaction.response.defer()  # デフォルトの応答を保留
 
-    blog_text = scrape_blog(url)
-   
-
-    # ブログのテキストを音声に変換
-    text_to_audio(blog_text, f'data/{blog_id}.mp3')
+    blog_text = await asyncio.to_thread(scrape_blog, url)
+    await asyncio.to_thread(text_to_audio, blog_text, f'data/{blog_id}.mp3')
 
     await interaction.followup.send("読む準備ができたよ！")
 
