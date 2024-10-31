@@ -327,10 +327,17 @@ async def convert_blog(interaction: discord.Interaction, url: str):
         await interaction.response.send_message("ひよたんのブログ以外は読まないよ！")
         return
     
+    blog_id = re.search(r'detail/(\d+)', url).group(1)
+    
+    if os.path.exists(f'data/{blog_id}.mp3'):
+        await interaction.response.send_message("音声ファイルがすでにあるよ！")
+        return
+    
+
     await interaction.response.defer()  # デフォルトの応答を保留
 
     blog_text = scrape_blog(url)
-    blog_id = re.search(r'detail/(\d+)', url).group(1)
+   
 
     # ブログのテキストを音声に変換
     text_to_audio(blog_text, f'data/{blog_id}.mp3')
