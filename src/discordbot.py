@@ -224,16 +224,7 @@ async def on_message(message: discord.Message):
         
         # print(answer)
 
-        # 再生完了後のコールバック関数
-        def after_playing(error):
-            if error:
-                print("Error occurred during playback:", error)
-            else:
-                print("Finished playing audio")
-            # 再生完了後にファイル削除
-            if os.path.exists(audio_file_path):
-                os.remove(audio_file_path)
-                print("Deleted audio file:", audio_file_path)
+    
 
         if message.guild.voice_client and message.author.voice and message.author.voice.channel:
             answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\n", "\t", "Q:"])
@@ -249,7 +240,7 @@ async def on_message(message: discord.Message):
                 # 音声をボイスチャンネルで再生
                 vc = message.guild.voice_client
                 source = discord.FFmpegPCMAudio(audio_file_path)
-                vc.play(source, after=after_playing)
+                vc.play(source)
                 
                 timeout = 20
                 start_time = asyncio.get_event_loop().time()  # 開始時刻を取得
@@ -267,7 +258,7 @@ async def on_message(message: discord.Message):
 
                         # 再度ソースを作成して再生
                         source = discord.FFmpegPCMAudio(audio_file_path)
-                        vc.play(source, after=after_playing)
+                        vc.play(source)
                         start_time = asyncio.get_event_loop().time()  # タイマーをリセット
 
                     await asyncio.sleep(1)  # 1秒ごとにチェック
@@ -275,6 +266,7 @@ async def on_message(message: discord.Message):
             except Exception as e:
                 print(e)
 
+            os.remove(audio_file_path)  # 一時ファイルを削除
             await message.reply(answer)
         else:
             answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
