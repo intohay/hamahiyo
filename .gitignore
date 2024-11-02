@@ -9,3 +9,5 @@ finetuned_gpt2
 bad_words.yaml
 *.txt
 *.wav
+*.mp3
+.DS_Store

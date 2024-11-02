@@ -3,12 +3,16 @@ from pydub import AudioSegment
 from generate import text_to_speech
 import pdb
 import io
+from utilities import paraphrase_text
+
 
 def text_to_audio(text, output_file):
     # Split text into sentences based on punctuation and newlines
     sentences = re.split(r"\n+", text)
-    # 「濱岸」を「はまぎし」に変換
-    sentences = [re.sub(r'濱岸', 'はまぎし', sentence) for sentence in sentences]
+
+    sentences = [paraphrase_text(sentence) for sentence in sentences]
+
+
 
     # 空白行を削除
     sentences = [sentence for sentence in sentences if sentence.strip()]

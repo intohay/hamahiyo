@@ -138,7 +138,35 @@ async def on_ready():
     for guild in bot.guilds:
         print(f"{guild.name} (id: {guild.id})")
     
+    voice_channel = bot.get_channel(int(os.getenv('VOICE_CHANNEL_ID')))
+    if len(voice_channel.members) > 0:
+        await voice_channel.connect()
+        print("Bot reconnected to the voice channel.")
+    
     schedule_daily_yaho()
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    
+    # 参加するのが自分でないことを確認
+    if member.bot:
+        return
+
+    # ユーザーが指定のチャンネルに参加した場合
+    voice_channel = bot.get_channel(int(os.getenv('VOICE_CHANNEL_ID')))
+    if after.channel == voice_channel and len(voice_channel.members) > 0:
+        # ボットがまだボイスチャンネルにいない場合、参加する
+        if bot.user not in voice_channel.members:
+            voice_client = await voice_channel.connect()
+            print("Bot has joined the voice channel.")
+    
+    # 指定のチャンネルが空になった場合、ボットが退出する
+    elif before.channel == voice_channel and len(voice_channel.members) == 1:
+        # ボットが現在参加中であるかを確認
+        if bot.voice_clients:
+            await bot.voice_clients[0].disconnect()
+            print("Bot has left the voice channel.")
+
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -294,7 +322,7 @@ async def read_blog(interaction: discord.Interaction, url: str):
 
     blog_id = re.search(r'detail/(\d+)', url).group(1)
     date_str = extract_date_from_blog(url)
-    
+
     # data/{blog_id}.mp3 が存在するか確認
     audio_file_path = f'data/{date_str}-{blog_id}.mp3'
 
