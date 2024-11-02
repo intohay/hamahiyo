@@ -168,11 +168,13 @@ async def on_voice_state_update(member, before, after):
             print("Bot has left the voice channel.")
 
 
-import io
-
-
 @bot.event
 async def on_message(message: discord.Message):
+    asyncio.create_task(handle_generating_and_converting(message))
+
+import concurrent.futures
+
+async def handle_generating_and_converting(message: discord.Message):
     if message.author == bot.user:
         return
 
@@ -230,50 +232,41 @@ async def on_message(message: discord.Message):
     
 
         if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-            answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\n", "\t", "Q:"])
-            try:
-                
-                audio_content = text_to_speech(answer)
-                audio_file_path = f"output_{message.id}.wav"
-                
+            
 
-                # 音声ファイルを保存
-                with open(audio_file_path, 'wb') as f:
-                    f.write(audio_content)
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ProcessPoolExecutor() as pool:
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
+        
+           
+            
+            audio_file_path = f"output_{message.id}.wav"
+            
 
-                # 音声をボイスチャンネルで再生
-                vc = message.guild.voice_client
-                source = discord.FFmpegPCMAudio(audio_file_path)
-                vc.play(source)
-                
-                timeout = 20
-                start_time = asyncio.get_event_loop().time()  # 開始時刻を取得
+            # 音声ファイルを保存
+            with open(audio_file_path, 'wb') as f:
+                f.write(audio_content)
 
-                while vc.is_playing():
-                    print('playing')
-                    # 現在の再生時間を計算
-                    elapsed_time = asyncio.get_event_loop().time() - start_time
+            # 音声をボイスチャンネルで再生
+            vc = message.guild.voice_client
+            source = discord.FFmpegPCMAudio(audio_file_path)
+            vc.play(source)
+        
 
-                    # 30秒を超えていたら再生をやり直す
-                    if elapsed_time > timeout:
-                        print('Timeout reached, restarting playback')
-                        vc.stop()  # 現在の再生を停止
-                        await asyncio.sleep(1)  # 少し待機してから再開
-
-                        # 再度ソースを作成して再生
-                        source = discord.FFmpegPCMAudio(audio_file_path)
-                        vc.play(source)
-                        start_time = asyncio.get_event_loop().time()  # タイマーをリセット
-
-                    await asyncio.sleep(1)  # 1秒ごとにチェック
-                
-            except Exception as e:
-                print(e)
+            while vc.is_playing():
+                print('playing')
+                # 現在の再生時間を計算
+                await asyncio.sleep(1)  # 1秒ごとにチェック
+        
+            
 
             os.remove(audio_file_path)  # 一時ファイルを削除
             await message.reply(answer)
         else:
-            answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ProcessPoolExecutor() as pool:
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
             await message.reply(answer)
         # メッセージにリプライ
         
