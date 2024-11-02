@@ -220,7 +220,8 @@ async def on_message(message: discord.Message):
             prompt = f"Q: {question}\nA:"
 
         print(prompt)
-        answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+        
+        
         # print(answer)
 
         # 再生完了後のコールバック関数
@@ -235,7 +236,7 @@ async def on_message(message: discord.Message):
                 print("Deleted audio file:", audio_file_path)
 
         if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-
+            answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\n", "\t", "Q:"])
             try:
                 
                 audio_content = text_to_speech(answer)
@@ -260,10 +261,12 @@ async def on_message(message: discord.Message):
             except Exception as e:
                 print(e)
 
-
-
+            await message.reply(answer)
+        else:
+            answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\t", "Q:"])
+            await message.reply(answer)
         # メッセージにリプライ
-        await message.reply(answer)
+        
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
