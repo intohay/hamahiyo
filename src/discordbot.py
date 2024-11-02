@@ -232,11 +232,7 @@ async def on_message(message: discord.Message):
         if message.guild.voice_client and message.author.voice and message.author.voice.channel:
             answer = retry_completion(prompt, num=1, temperature=temperature, max_retries=3, stop=["\n", "\t", "Q:"])
             try:
-                silence = discord.FFmpegPCMAudio(io.BytesIO(b'\x00\x00' * 48000 * 2), pipe=True)
-
-                # 無音を再生
-                vc.play(silence)
-                await asyncio.sleep(1)  # 1秒の無音再生を待機
+                
                 audio_content = text_to_speech(answer)
                 audio_file_path = f"output_{message.id}.wav"
                 
