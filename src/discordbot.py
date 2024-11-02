@@ -168,6 +168,25 @@ async def on_voice_state_update(member, before, after):
             print("Bot has left the voice channel.")
 
 
+import wave
+import io
+
+def add_silence(audio_content, duration=3, sample_rate=48000, channels=2):
+    # 無音を生成
+    silence = io.BytesIO()
+    with wave.open(silence, 'wb') as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(2)  # 16ビット (2バイト)
+        wf.setframerate(sample_rate)
+        wf.writeframes(b'\x00\x00' * int(sample_rate * duration * channels))
+
+    # 無音のデータを先頭に追加
+    silence.seek(0)
+    audio_content_with_silence = silence.read() + audio_content
+    return audio_content_with_silence
+
+
+
 @bot.event
 async def on_message(message: discord.Message):
     if message.author == bot.user:
@@ -231,6 +250,7 @@ async def on_message(message: discord.Message):
             try:
                 
                 audio_content = text_to_speech(answer)
+                audio_content_with_silence = add_silence(audio_content)
                 audio_file_path = f"output_{message.id}.wav"
 
                 # 音声ファイルを保存
