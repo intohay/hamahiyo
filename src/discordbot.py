@@ -314,8 +314,11 @@ async def generate(interaction: discord.Interaction, prompt: str):
     temperature, clean_prompt = extract_t_option(prompt)  # -tオプションを抽出
 
     try:
-        message = f"**{clean_prompt}**" + n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
-
+        while True:
+            completion = n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
+            if not contains_bad_words(completion):
+                message = f"**{clean_prompt}**" + n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
+                break
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
