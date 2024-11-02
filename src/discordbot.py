@@ -249,14 +249,28 @@ async def on_message(message: discord.Message):
                 # 音声をボイスチャンネルで再生
                 vc = message.guild.voice_client
                 source = discord.FFmpegPCMAudio(audio_file_path)
-                
                 vc.play(source, after=after_playing)
                 
-                # 再生が完了するまで待機
+                timeout = 20
+                start_time = asyncio.get_event_loop().time()  # 開始時刻を取得
+
                 while vc.is_playing():
                     print('playing')
-                    await asyncio.sleep(1)
-                print('done')
+                    # 現在の再生時間を計算
+                    elapsed_time = asyncio.get_event_loop().time() - start_time
+
+                    # 30秒を超えていたら再生をやり直す
+                    if elapsed_time > timeout:
+                        print('Timeout reached, restarting playback')
+                        vc.stop()  # 現在の再生を停止
+                        await asyncio.sleep(1)  # 少し待機してから再開
+
+                        # 再度ソースを作成して再生
+                        source = discord.FFmpegPCMAudio(audio_file_path)
+                        vc.play(source, after=after_playing)
+                        start_time = asyncio.get_event_loop().time()  # タイマーをリセット
+
+                    await asyncio.sleep(1)  # 1秒ごとにチェック
                 
             except Exception as e:
                 print(e)
