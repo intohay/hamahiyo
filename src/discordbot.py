@@ -368,14 +368,14 @@ async def generate(interaction: discord.Interaction, prompt: str):
 async def read_blog(interaction: discord.Interaction, url: str = None):
     # https://www.hinatazaka46.com/s/official/diary/detail/57856?ima=0000&cd=member
     # から57856を抽出
-    print(url)
+    
     if url is None:
         # data配下にあるmp3ファイルからランダムに選んで再生
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         if len(audio_files) == 0:
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
-        print(audio_files)
+       
         audio_file = random.choice(audio_files)
         audio_file_path = f'data/{audio_file}'
 
@@ -384,7 +384,8 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
         # 通し番号なので、data配下のファイル名をソートして、その通し番号のファイルを再生
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         audio_files.sort()
-        audio_file_path = f'data/{audio_files[int(url)]}'
+        print(audio_files)
+        audio_file_path = f'data/{audio_files[int(url) - 1]}'
     else:
         blog_id = re.search(r'detail/(\d+)', url).group(1)
         date_str = extract_date_from_blog(url)
@@ -392,7 +393,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
         # data/{blog_id}.mp3 が存在するか確認
         audio_file_path = f'data/{date_str}-{blog_id}.mp3'
 
-    print(audio_file_path)
+  
 
 
     if not os.path.exists(audio_file_path):
