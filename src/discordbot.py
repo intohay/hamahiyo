@@ -131,6 +131,35 @@ def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", 
 
     return answer
 
+async def control_vits_server(action: str):
+    async with aiohttp.ClientSession() as session:
+        if action == "start":
+            start_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/start/style-bert-vits2.service"
+            await session.get(start_vits_server_endpoint)
+        elif action == "stop":
+            stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
+            await session.get(stop_vits_server_endpoint)
+
+async def wait_for_server_to_start():
+    models_info_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/models/info"
+
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                response = await session.get(models_info_endpoint)
+                if response.status == 200:
+                    print("The server has started.")
+                    break
+                else:
+                    print("Waiting for the server to start...")
+                    await asyncio.sleep(5)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                await asyncio.sleep(5)
+
+
+    
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
@@ -158,44 +187,23 @@ async def on_voice_state_update(member, before, after):
     if after.channel == voice_channel and len(voice_channel.members) > 0:
         # ボットがまだボイスチャンネルにいない場合、参加する
         if bot.user not in voice_channel.members:
-            async with aiohttp.ClientSession() as session:
-                # サーバーを起動する
-                start_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/start/style-bert-vits2.service"
-                await session.get(start_vits_server_endpoint)
-
-                models_info_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/models/info"
-
-                while True:
-                    try:
-                        response = await session.get(models_info_endpoint)
-                        if response.status_code == 200:
-                            print("The server has started.")
-                            await voice_channel.connect()
-                            print("Bot has joined the voice channel.")
-                            break
-                        else:
-                            print("Waiting for the server to start...")
-                            await asyncio.sleep(5)
-                    except Exception as e:
-                        print(f"Error: {str(e)}")
-                        await asyncio.sleep(5)
-
             
+            print("Bot has joined the voice channel.")
+            await control_vits_server("start")
+            await wait_for_server_to_start()
+            print("The VITS server has started.")
+            await voice_channel.connect()
 
+                
            
     
     # 指定のチャンネルが空になった場合、ボットが退出する
     elif before.channel == voice_channel and len(voice_channel.members) == 1:
         # ボットが現在参加中であるかを確認
         if bot.voice_clients:
-            with aiohttp.ClientSession() as session:
-                # サーバーを停止する
-                stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
-                await session.get(stop_vits_server_endpoint)
-                print("Stopped the VITS server.")
-
-                await bot.voice_clients[0].disconnect()
-                print("Bot has left the voice channel.")
+            await control_vits_server("stop")
+            await bot.voice_clients[0].disconnect()
+            print("Bot has left the voice channel.")
 
             
 
@@ -411,11 +419,18 @@ async def convert_blog(interaction: discord.Interaction, url: str):
 
     await interaction.response.defer()  # デフォルトの応答を保留
 
+
     blog_text = await asyncio.to_thread(scrape_blog, url)
 
+    await control_vits_server("start")
+    await wait_for_server_to_start()
+    print("The VITS server has started)")
     await asyncio.to_thread(text_to_audio, blog_text, file_path)
 
     await interaction.followup.send("読む準備ができたよ！")
+    await control_vits_server("stop")
+
+
 
 
 
