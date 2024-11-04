@@ -9,6 +9,24 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 bad_words_path = os.path.join(base_dir, '..', 'bad_words.yaml')
 
 
+
+text = r'[0-9A-Za-zぁ-ヶ一-龠]'
+non_text = r'[^\n!?！？0-9A-Za-zぁ-ヶ一-龠]'
+allow_text = r'[ovっつ゜ニノ三二ﾛ]'
+hw_kana = r'[ｦ-ﾟ]'
+open_bracket = r'[\(∩꒰（]'
+close_bracket = r'[\)∩꒱）]'
+around_face = r'(?:' + non_text + r'|' + allow_text + r')*'
+face = r'(?!(?:' + text + r'|' + hw_kana + r'){3,}).{3,}'
+face_char_pattern = around_face + open_bracket + face + close_bracket + around_face
+
+face_char_regex = re.compile(face_char_pattern)
+
+# テスト文字列に適用する関数
+def remove_faces(text):
+    return face_char_regex.sub('', text)
+
+
 # YAMLファイルからbad_wordsを読み込む
 def load_bad_words():
     with open(bad_words_path, "r", encoding="utf-8") as file:
@@ -43,47 +61,47 @@ def extract_name_from_blog(url):
 
     return name.strip()
 
+
+def scrape_body(soup):
+    body_element = str(soup.find("div",
+                                class_='c-blog-article__text'))
+
+    body_element = re.sub('<br.*?>', '\n', body_element)  # <br>タグを改行に変換
+    body_element = re.sub('</div>', '', body_element)  # <div>を消去
+    body_element = re.sub('<div>', '\n', body_element)  # </div>タグを改行に変換
+
+    body_content = re.sub('<.+?>', '', body_element)  # 他のタグを消去
+    
+    return body_content
+
+
 def scrape_blog(url):
     # ブログをスクレイピング(テキストのみ)
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # ブログの本文を取得
-    article_div = soup.find("div", class_="c-blog-article__text")
-
-    for span in article_div.find_all("span"):
-        span.unwrap()  # Remove <span> tags but keep their content
-
-    # <br>タグを改行に変換
-    for br in article_div.find_all("br"):
-        br.replace_with("\n")
-
-    text_content = []
+    full_text = scrape_body(soup)
+        
     
-    for elem in article_div.descendants:
-        if elem.name == "p":
-            text_content.append(elem.text.strip())
-        elif elem.name == "div":
-            text_content.append(elem.text.strip())
-        elif elem.parent.name != "p" and elem.parent.name != "div" and isinstance(elem, str):
-            text_content.append(elem.strip())
-
-        
-        
-
-        
-
-
-    # Join text content
-    full_text = "\n".join(text_content)
-    print(full_text)
+   
     # httpで始まるURLを削除
     full_text = re.sub(r"http\S+", "", full_text)
     # @で始まる英数字を削除
     full_text = re.sub(r"@\w+", "", full_text)
 
+    # \nで分割
+    full_text = full_text.split("\n")
 
-    
+    # 空白行を削除
+    full_text = [line for line in full_text if line.strip()]
+
+    # 先頭と末尾の空白を削除
+    full_text = [line.strip() for line in full_text]
+
+    # リストを文字列に変換
+    full_text = "\n".join(full_text)
+    full_text = remove_faces(full_text)
+    print(full_text)
     return full_text
 
 def extract_date_from_blog(url):
@@ -210,5 +228,5 @@ def paraphrase_text(text):
 
 
 if __name__ == "__main__":
-    url = "https://www.hinatazaka46.com/s/official/diary/detail/45618?ima=0000&cd=member"
+    url = "https://www.hinatazaka46.com/s/official/diary/detail/40153?ima=0000&cd=member"
     scrape_blog(url)
