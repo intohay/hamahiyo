@@ -168,6 +168,8 @@ async def on_voice_state_update(member, before, after):
                     response = requests.get(models_info_endpoint)
                     if response.status_code == 200:
                         print("The server has started.")
+                        voice_client = await voice_channel.connect()
+                        print("Bot has joined the voice channel.")
                         break
                     else:
                         print("Waiting for the server to start...")
@@ -178,8 +180,7 @@ async def on_voice_state_update(member, before, after):
 
             
 
-            voice_client = await voice_channel.connect()
-            print("Bot has joined the voice channel.")
+           
     
     # 指定のチャンネルが空になった場合、ボットが退出する
     elif before.channel == voice_channel and len(voice_channel.members) == 1:
@@ -188,7 +189,7 @@ async def on_voice_state_update(member, before, after):
             stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
             requests.get(stop_vits_server_endpoint)
             print("Stopped the VITS server.")
-            
+
             await bot.voice_clients[0].disconnect()
             print("Bot has left the voice channel.")
 
