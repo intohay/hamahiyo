@@ -227,89 +227,89 @@ async def handle_generating_and_converting(message: discord.Message):
     
     # Botがメンションされたかどうか確認
     if is_mention or is_reply:
+        async with message.channel.typing():
+            # メンションされたら応答
+            question = message.content.replace(f'<@{bot.user.id}>', '').strip()
 
-        # メンションされたら応答
-        question = message.content.replace(f'<@{bot.user.id}>', '').strip()
-
-        is_debug, question = extract_d_option(question)  # -dオプションを抽出
-        temperature, question = extract_t_option(question)  # -tオプションを抽出
+            is_debug, question = extract_d_option(question)  # -dオプションを抽出
+            temperature, question = extract_t_option(question)  # -tオプションを抽出
 
 
-        if is_reply:
+            if is_reply:
 
-            current_message = message
-            # system_prompt = "質問返しまーす！\t"
-            prompt = f"Q: {question}\nA:"
-            while current_message.reference is not None:
+                current_message = message
+                # system_prompt = "質問返しまーす！\t"
+                prompt = f"Q: {question}\nA:"
+                while current_message.reference is not None:
+                    
+                    previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
+                    previous_answer = previous_message.content
+
+                    if previous_message.reference:
+                        more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
+                        previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
+                    else:
+                        break
+
+                    new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
+                    if get_token_count(new_prompt) > 200:
+                        break
+                    prompt = new_prompt
+
+                    current_message = more_previous_message
                 
-                previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
-                previous_answer = previous_message.content
+                
+                
 
-                if previous_message.reference:
-                    more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
-                    previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
-                else:
-                    break
+            else:
+                prompt = f"Q: {question}\nA:"
 
-                new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
-                if get_token_count(new_prompt) > 200:
-                    break
-                prompt = new_prompt
-
-                current_message = more_previous_message
+            print(prompt)
             
             
-            
+            # print(answer)
 
-        else:
-            prompt = f"Q: {question}\nA:"
-
-        print(prompt)
-        
-        
-        # print(answer)
-
-    
-
-        if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-            
-
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ProcessPoolExecutor() as pool:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
-                audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
-        
-           
-            
-            audio_file_path = f"output_{message.id}.wav"
-            
-
-            # 音声ファイルを保存
-            with open(audio_file_path, 'wb') as f:
-                f.write(audio_content)
-
-            # 音声をボイスチャンネルで再生
-            vc = message.guild.voice_client
-            source = discord.FFmpegPCMAudio(audio_file_path)
-            vc.play(source)
         
 
-            while vc.is_playing():
-                print('playing')
-                # 現在の再生時間を計算
-                await asyncio.sleep(1)  # 1秒ごとにチェック
-        
+            if message.guild.voice_client and message.author.voice and message.author.voice.channel:
+                
+
+                loop = asyncio.get_event_loop()
+                with concurrent.futures.ProcessPoolExecutor() as pool:
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                    audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
+            
+            
+                
+                audio_file_path = f"output_{message.id}.wav"
+                
+
+                # 音声ファイルを保存
+                with open(audio_file_path, 'wb') as f:
+                    f.write(audio_content)
+
+                # 音声をボイスチャンネルで再生
+                vc = message.guild.voice_client
+                source = discord.FFmpegPCMAudio(audio_file_path)
+                vc.play(source)
             
 
-            os.remove(audio_file_path)  # 一時ファイルを削除
-            await message.reply(answer)
-        else:
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ProcessPoolExecutor() as pool:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
-            await message.reply(answer)
-        # メッセージにリプライ
-        
+                while vc.is_playing():
+                    print('playing')
+                    # 現在の再生時間を計算
+                    await asyncio.sleep(1)  # 1秒ごとにチェック
+            
+                
+
+                os.remove(audio_file_path)  # 一時ファイルを削除
+                await message.reply(answer)
+            else:
+                loop = asyncio.get_event_loop()
+                with concurrent.futures.ProcessPoolExecutor() as pool:
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
+                await message.reply(answer)
+            # メッセージにリプライ
+            
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
@@ -365,15 +365,31 @@ async def generate(interaction: discord.Interaction, prompt: str):
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
 @bot.tree.command(name='read', description='指定したURLのブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-async def read_blog(interaction: discord.Interaction, url: str):
+async def read_blog(interaction: discord.Interaction, url: str = None):
     # https://www.hinatazaka46.com/s/official/diary/detail/57856?ima=0000&cd=member
     # から57856を抽出
 
-    blog_id = re.search(r'detail/(\d+)', url).group(1)
-    date_str = extract_date_from_blog(url)
+    if url is None:
+        # data配下にあるmp3ファイルからランダムに選んで再生
+        audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
+        if len(audio_files) == 0:
+            await interaction.response.send_message("音声ファイルがまだないよ！")
+            return
+        audio_file = random.choice(audio_files)
+        audio_file_path = f'data/{audio_file}'
 
-    # data/{blog_id}.mp3 が存在するか確認
-    audio_file_path = f'data/{date_str}-{blog_id}.mp3'
+    # URLが数字のみの場合、通し番号として扱う
+    elif url.isdigit():
+        # 通し番号なので、data配下のファイル名をソートして、その通し番号のファイルを再生
+        audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
+        audio_files.sort()
+        audio_file_path = f'data/{audio_files[int(url)]}'
+    else:
+        blog_id = re.search(r'detail/(\d+)', url).group(1)
+        date_str = extract_date_from_blog(url)
+
+        # data/{blog_id}.mp3 が存在するか確認
+        audio_file_path = f'data/{date_str}-{blog_id}.mp3'
 
     if not os.path.exists(audio_file_path):
         #　存在しない場合、その旨を返信
@@ -398,6 +414,7 @@ async def read_blog(interaction: discord.Interaction, url: str):
             print('playing')
             await asyncio.sleep(1)
         print('done')
+
 
 @bot.tree.command(name='convert', description='指定したURLのブログを音声に変換します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def convert_blog(interaction: discord.Interaction, url: str):
