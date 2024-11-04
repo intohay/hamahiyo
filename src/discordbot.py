@@ -12,6 +12,7 @@ from generate import n_messages_completion, tokenize, text_to_speech
 import aiohttp
 from utilities import contains_bad_words, extract_name_from_blog, scrape_blog, extract_date_from_blog
 from reading import text_to_audio
+import aiohttp
 
 load_dotenv()
 
@@ -157,26 +158,27 @@ async def on_voice_state_update(member, before, after):
     if after.channel == voice_channel and len(voice_channel.members) > 0:
         # ボットがまだボイスチャンネルにいない場合、参加する
         if bot.user not in voice_channel.members:
-            # サーバーを起動する
-            start_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/start/style-bert-vits2.service"
-            requests.get(start_vits_server_endpoint)
+            async with aiohttp.ClientSession() as session:
+                # サーバーを起動する
+                start_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/start/style-bert-vits2.service"
+                await session.get(start_vits_server_endpoint)
 
-            models_info_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/models/info"
+                models_info_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/models/info"
 
-            while True:
-                try:
-                    response = requests.get(models_info_endpoint)
-                    if response.status_code == 200:
-                        print("The server has started.")
-                        voice_client = await voice_channel.connect()
-                        print("Bot has joined the voice channel.")
-                        break
-                    else:
-                        print("Waiting for the server to start...")
+                while True:
+                    try:
+                        response = await session.get(models_info_endpoint)
+                        if response.status_code == 200:
+                            print("The server has started.")
+                            await voice_channel.connect()
+                            print("Bot has joined the voice channel.")
+                            break
+                        else:
+                            print("Waiting for the server to start...")
+                            await asyncio.sleep(5)
+                    except Exception as e:
+                        print(f"Error: {str(e)}")
                         await asyncio.sleep(5)
-                except Exception as e:
-                    print(f"Error: {str(e)}")
-                    await asyncio.sleep(5)
 
             
 
@@ -186,12 +188,14 @@ async def on_voice_state_update(member, before, after):
     elif before.channel == voice_channel and len(voice_channel.members) == 1:
         # ボットが現在参加中であるかを確認
         if bot.voice_clients:
-            stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
-            requests.get(stop_vits_server_endpoint)
-            print("Stopped the VITS server.")
+            with aiohttp.ClientSession() as session:
+                # サーバーを停止する
+                stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
+                await session.get(stop_vits_server_endpoint)
+                print("Stopped the VITS server.")
 
-            await bot.voice_clients[0].disconnect()
-            print("Bot has left the voice channel.")
+                await bot.voice_clients[0].disconnect()
+                print("Bot has left the voice channel.")
 
             
 
@@ -408,6 +412,7 @@ async def convert_blog(interaction: discord.Interaction, url: str):
     await interaction.response.defer()  # デフォルトの応答を保留
 
     blog_text = await asyncio.to_thread(scrape_blog, url)
+
     await asyncio.to_thread(text_to_audio, blog_text, file_path)
 
     await interaction.followup.send("読む準備ができたよ！")
