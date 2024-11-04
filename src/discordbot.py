@@ -157,6 +157,27 @@ async def on_voice_state_update(member, before, after):
     if after.channel == voice_channel and len(voice_channel.members) > 0:
         # ボットがまだボイスチャンネルにいない場合、参加する
         if bot.user not in voice_channel.members:
+            # サーバーを起動する
+            start_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/start/style-bert-vits2.service"
+            requests.get(start_vits_server_endpoint)
+
+            models_info_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/models/info"
+
+            while True:
+                try:
+                    response = requests.get(models_info_endpoint)
+                    if response.status_code == 200:
+                        print("The server has started.")
+                        break
+                    else:
+                        print("Waiting for the server to start...")
+                        await asyncio.sleep(5)
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+                    await asyncio.sleep(5)
+
+            
+
             voice_client = await voice_channel.connect()
             print("Bot has joined the voice channel.")
     
@@ -164,8 +185,14 @@ async def on_voice_state_update(member, before, after):
     elif before.channel == voice_channel and len(voice_channel.members) == 1:
         # ボットが現在参加中であるかを確認
         if bot.voice_clients:
+            stop_vits_server_endpoint = f"http://{os.getenv('MY_IP_ADDRESS')}:8001/stop/style-bert-vits2.service"
+            requests.get(stop_vits_server_endpoint)
+            print("Stopped the VITS server.")
+            
             await bot.voice_clients[0].disconnect()
             print("Bot has left the voice channel.")
+
+            
 
 
 @bot.event
