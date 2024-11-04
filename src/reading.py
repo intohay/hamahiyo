@@ -23,13 +23,13 @@ def text_to_audio(text, output_file):
     merged_sentences = []
     current_chunk = ""
 
-    # 200文字以内になるように部分をマージ
+    # 90文字以内になるように部分をマージ
     for sentence in sentences:
-        # 次の文を追加して200文字以内なら追加する
-        if len(current_chunk) + len(sentence) <= 200:
+        # 次の文を追加して90文字以内なら追加する
+        if len(current_chunk) + len(sentence) < 90:
             current_chunk += sentence + "\n"
         else:
-            # 200文字を超える場合は今のチャンクを保存して、新しいチャンクを開始
+            # 90文字を超える場合は今のチャンクを保存して、新しいチャンクを開始
             merged_sentences.append(current_chunk)
             current_chunk = sentence
 
