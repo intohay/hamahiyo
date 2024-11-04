@@ -13,7 +13,7 @@ import aiohttp
 from utilities import contains_bad_words, extract_name_from_blog, scrape_blog, extract_date_from_blog
 from reading import text_to_audio
 import aiohttp
-
+import random
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -368,13 +368,14 @@ async def generate(interaction: discord.Interaction, prompt: str):
 async def read_blog(interaction: discord.Interaction, url: str = None):
     # https://www.hinatazaka46.com/s/official/diary/detail/57856?ima=0000&cd=member
     # から57856を抽出
-
+    print(url)
     if url is None:
         # data配下にあるmp3ファイルからランダムに選んで再生
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         if len(audio_files) == 0:
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
+        print(audio_files)
         audio_file = random.choice(audio_files)
         audio_file_path = f'data/{audio_file}'
 
@@ -390,6 +391,9 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
 
         # data/{blog_id}.mp3 が存在するか確認
         audio_file_path = f'data/{date_str}-{blog_id}.mp3'
+
+    print(audio_file_path)
+
 
     if not os.path.exists(audio_file_path):
         #　存在しない場合、その旨を返信
