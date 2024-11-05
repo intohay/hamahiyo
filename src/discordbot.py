@@ -338,9 +338,9 @@ async def generate(interaction: discord.Interaction, prompt: str):
 
 @bot.tree.command(name='read', description='指定したURLのブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def read_blog(interaction: discord.Interaction, url: str = None):
-    # https://www.hinatazaka46.com/s/official/diary/detail/57856?ima=0000&cd=member
-    # から57856を抽出
     
+    url_template = "https://www.hinatazaka46.com/s/official/diary/detail/{}"
+
     if url is None:
         # data配下にあるmp3ファイルからランダムに選んで再生
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
@@ -350,14 +350,23 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
        
         audio_file = random.choice(audio_files)
         audio_file_path = f'data/{audio_file}'
+        # 2024-01-01-123456.mp3 の形式で保存されているので、123456の部分を抽出
+        url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
 
     # URLが数字のみの場合、通し番号として扱う
     elif url.isdigit():
         # 通し番号なので、data配下のファイル名をソートして、その通し番号のファイルを再生
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         audio_files.sort()
-        print(audio_files)
-        audio_file_path = f'data/{audio_files[int(url) - 1]}'
+        
+        if int(url) > len(audio_files):
+            await interaction.response.send_message("指定した番号の音声ファイルが存在しないよ！")
+            return
+        
+        audio_file = audio_files[int(url) - 1]
+        audio_file_path = f'data/{audio_file}'
+        url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
+
     else:
         blog_id = re.search(r'detail/(\d+)', url).group(1)
         date_str = extract_date_from_blog(url)
@@ -365,7 +374,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
         # data/{blog_id}.mp3 が存在するか確認
         audio_file_path = f'data/{date_str}-{blog_id}.mp3'
 
-  
+
 
 
     if not os.path.exists(audio_file_path):
@@ -381,7 +390,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
             await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
             return
         
-        await interaction.response.send_message("読むね！")
+        await interaction.response.send_message(f"読むね！{url}")
 
         source = discord.FFmpegPCMAudio(audio_file_path)
         vc.play(source)
