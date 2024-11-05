@@ -251,33 +251,33 @@ async def handle_generating_and_converting(message: discord.Message):
             
             
                 
-                audio_file_path = f"output_{message.id}.wav"
+                    audio_file_path = f"output_{message.id}.wav"
+                    
+
+                    # 音声ファイルを保存
+                    with open(audio_file_path, 'wb') as f:
+                        f.write(audio_content)
+
+                    # 音声をボイスチャンネルで再生
+                    vc = message.guild.voice_client
+                    source = discord.FFmpegPCMAudio(audio_file_path)
+                    vc.play(source)
                 
 
-                # 音声ファイルを保存
-                with open(audio_file_path, 'wb') as f:
-                    f.write(audio_content)
-
-                # 音声をボイスチャンネルで再生
-                vc = message.guild.voice_client
-                source = discord.FFmpegPCMAudio(audio_file_path)
-                vc.play(source)
-            
-
-                while vc.is_playing():
-                    print('playing')
-                    # 現在の再生時間を計算
-                    await asyncio.sleep(1)  # 1秒ごとにチェック
-            
+                    while vc.is_playing():
+                        print('playing')
+                        # 現在の再生時間を計算
+                        await asyncio.sleep(1)  # 1秒ごとにチェック
                 
+                    
 
-                os.remove(audio_file_path)  # 一時ファイルを削除
-                await message.reply(answer)
+                    os.remove(audio_file_path)  # 一時ファイルを削除
+                    await message.reply(answer)
             else:
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
                     answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
-                await message.reply(answer)
+                    await message.reply(answer)
             # メッセージにリプライ
             
 
