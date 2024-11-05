@@ -344,7 +344,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
 
     if url is None:
         # data配下にあるmp3ファイルからランダムに選択して再生 
-        # ただし、完全なランダムだと昔のブログばかり再生されるので、月ごとに重みをつける
+        # ただし、完全なランダムだと昔のブログばかり再生されるので、四半期ごとに重みをつける
 
 
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
@@ -352,18 +352,16 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
         
-        monthly_files = defaultdict(list)
+        quarterly_files = defaultdict(list)
         for file in audio_files:
-            year_month = '-'.join(file.split('-'[:2]))
-            monthly_files[year_month].append(file)
+            year = file.split('-')[0]  # 年を取得
+            quarter = (int(file.split('-')[1]) - 1) // 3 + 1  # 月を四半期に変換
+            group_key = f"{year}-Q{quarter}"
+            quarterly_files[group_key].append(file)
 
-        weights = [1 / len(files) for files in monthly_files.values()]
-
-        selected_month = random.choices(list(monthly_files.keys()), weights=weights, k=1)[0]
-
-        
-       
-        audio_file = random.choice(monthly_files[selected_month])
+        # グループ間の重みを均等に設定してランダムに選択
+        selected_group = random.choice(list(quarterly_files.keys()))
+        audio_file = random.choice(quarterly_files[selected_group])
         audio_file_path = f'data/{audio_file}'
         # 2024-01-01-123456.mp3 の形式で保存されているので、123456の部分を抽出
         url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
