@@ -124,7 +124,7 @@ def text_to_speech(text):
     url = f"http://{os.getenv('MY_IP_ADDRESS')}:5000/voice"
 
     # GETリクエスト
-    response = requests.get(url, params={"text": text, "model_name": "hamahiyo"})
+    response = requests.post(url, params={"text": text, "model_name": "hamahiyo"})
 
 
     if response.status_code == 200:

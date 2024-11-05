@@ -247,8 +247,10 @@ async def handle_generating_and_converting(message: discord.Message):
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
                     answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                    print(answer)
                     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
-            
+
+                    print(audio_content)
             
                 
                     audio_file_path = f"output_{message.id}.wav"
