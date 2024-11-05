@@ -131,7 +131,8 @@ def text_to_speech(text):
         # audio/wavが返ってくる
         return response.content
     else:
-        return f"An error occurred: {response.text}"
+        print(f"An error occurred: {response.text}")
+        return None
 
 if __name__ == '__main__':
     # from discordbot import generate_message_from_prompt

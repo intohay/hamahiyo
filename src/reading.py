@@ -4,7 +4,7 @@ from generate import text_to_speech
 import pdb
 import io
 from utilities import paraphrase_text
-
+import time
 
 def text_to_audio(text, output_file):
     # Split text into sentences based on punctuation and newlines
@@ -23,27 +23,44 @@ def text_to_audio(text, output_file):
     merged_sentences = []
     current_chunk = ""
 
-    # 90文字以内になるように部分をマージ
+    # 200文字以内になるように部分をマージ
     for sentence in sentences:
-        # 次の文を追加して90文字以内なら追加する
-        if len(current_chunk) + len(sentence) < 90:
+        # 次の文を追加して200文字以内なら追加する
+        if len(current_chunk) + len(sentence) < 200:
             current_chunk += sentence + "\n"
         else:
-            # 90文字を超える場合は今のチャンクを保存して、新しいチャンクを開始
+            # 200文字を超える場合は今のチャンクを保存して、新しいチャンクを開始
             merged_sentences.append(current_chunk)
             current_chunk = sentence
 
     if current_chunk:
         merged_sentences.append(current_chunk)
     
-        
+    
+    
+
+
     for sentence in merged_sentences:
         print("Converting sentence: ", sentence)
         if sentence.strip():  # Skip empty sentences
-            # Get binary wav data and convert to AudioSegment
-            audio_data = text_to_speech(sentence)  # Assuming it returns wav binary data
-            audio = AudioSegment.from_file(io.BytesIO(audio_data), format="wav")
-            combined_audio += audio
+            retries = 3  # 再試行回数の設定
+            audio_data = None
+
+            # リトライのためのループ
+            for attempt in range(retries):
+                audio_data = text_to_speech(sentence)  # Assuming it returns wav binary data
+                if audio_data is not None:
+                    break  # 成功したらループを抜ける
+                else:
+                    print(f"Retrying conversion for sentence: {sentence} (attempt {attempt + 1})")
+                    time.sleep(1)  # 少し待ってから再試行
+
+            # audio_data が取得できたかどうかを確認
+            if audio_data is not None:
+                audio = AudioSegment.from_file(io.BytesIO(audio_data), format="wav")
+                combined_audio += audio
+            else:
+                print(f"Failed to convert sentence after {retries} attempts: {sentence}")
     
     # Export the combined audio to a file
     combined_audio.export(output_file, format="mp3")
