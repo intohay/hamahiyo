@@ -197,90 +197,90 @@ async def handle_generating_and_converting(message: discord.Message):
     
     # Botがメンションされたかどうか確認
     if is_mention or is_reply:
-        # async with message.channel.typing():
-        # メンションされたら応答
-        question = message.content.replace(f'<@{bot.user.id}>', '').strip()
+        async with message.channel.typing():
+            # メンションされたら応答
+            question = message.content.replace(f'<@{bot.user.id}>', '').strip()
 
-        is_debug, question = extract_d_option(question)  # -dオプションを抽出
-        temperature, question = extract_t_option(question)  # -tオプションを抽出
+            is_debug, question = extract_d_option(question)  # -dオプションを抽出
+            temperature, question = extract_t_option(question)  # -tオプションを抽出
 
 
-        if is_reply:
+            if is_reply:
 
-            current_message = message
-            # system_prompt = "質問返しまーす！\t"
-            prompt = f"Q: {question}\nA:"
-            while current_message.reference is not None:
+                current_message = message
+                # system_prompt = "質問返しまーす！\t"
+                prompt = f"Q: {question}\nA:"
+                while current_message.reference is not None:
+                    
+                    previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
+                    previous_answer = previous_message.content
+
+                    if previous_message.reference:
+                        more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
+                        previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
+                    else:
+                        break
+
+                    new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
+                    if get_token_count(new_prompt) > 200:
+                        break
+                    prompt = new_prompt
+
+                    current_message = more_previous_message
                 
-                previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
-                previous_answer = previous_message.content
-
-                if previous_message.reference:
-                    more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
-                    previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
-                else:
-                    break
-
-                new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
-                if get_token_count(new_prompt) > 200:
-                    break
-                prompt = new_prompt
-
-                current_message = more_previous_message
-            
-            
-            
-
-        else:
-            prompt = f"Q: {question}\nA:"
-
-        print(prompt)
-        
-        
-        # print(answer)
-
-    
-
-        if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-            
-
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ProcessPoolExecutor() as pool:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
-                print(answer)
-                audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
-
-                print(audio_content)
-        
-            
-                audio_file_path = f"output_{message.id}.wav"
+                
                 
 
-                # 音声ファイルを保存
-                with open(audio_file_path, 'wb') as f:
-                    f.write(audio_content)
+            else:
+                prompt = f"Q: {question}\nA:"
 
-                # 音声をボイスチャンネルで再生
-                vc = message.guild.voice_client
-                source = discord.FFmpegPCMAudio(audio_file_path)
-                vc.play(source)
+            print(prompt)
             
+            
+            # print(answer)
 
-                while vc.is_playing():
-                    print('playing')
-                    # 現在の再生時間を計算
-                    await asyncio.sleep(1)  # 1秒ごとにチェック
-            
+        
+
+            if message.guild.voice_client and message.author.voice and message.author.voice.channel:
                 
 
-                os.remove(audio_file_path)  # 一時ファイルを削除
-                await message.reply(answer)
-        else:
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ProcessPoolExecutor() as pool:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
-                await message.reply(answer)
-        # メッセージにリプライ
+                loop = asyncio.get_event_loop()
+                with concurrent.futures.ProcessPoolExecutor() as pool:
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                    print(answer)
+                    audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
+
+                    print(audio_content)
+            
+                
+                    audio_file_path = f"output_{message.id}.wav"
+                    
+
+                    # 音声ファイルを保存
+                    with open(audio_file_path, 'wb') as f:
+                        f.write(audio_content)
+
+                    # 音声をボイスチャンネルで再生
+                    vc = message.guild.voice_client
+                    source = discord.FFmpegPCMAudio(audio_file_path)
+                    vc.play(source)
+                
+
+                    while vc.is_playing():
+                        print('playing')
+                        # 現在の再生時間を計算
+                        await asyncio.sleep(1)  # 1秒ごとにチェック
+                
+                    
+
+                    os.remove(audio_file_path)  # 一時ファイルを削除
+                    await message.reply(answer)
+            else:
+                loop = asyncio.get_event_loop()
+                with concurrent.futures.ProcessPoolExecutor() as pool:
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
+                    await message.reply(answer)
+            # メッセージにリプライ
             
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')

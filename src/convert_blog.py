@@ -6,7 +6,7 @@ from utilities import scrape_blog, extract_date_from_blog
 
 def main():
 
-    start_url = "https://www.hinatazaka46.com/s/official/diary/detail/40153?ima=0000&cd=member"
+    start_url = "https://www.hinatazaka46.com/s/official/diary/detail/27306?ima=0000&cd=member"
     base_url = "https://www.hinatazaka46.com"
 
     url = start_url
