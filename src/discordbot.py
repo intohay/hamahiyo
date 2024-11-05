@@ -14,6 +14,7 @@ from utilities import contains_bad_words, extract_name_from_blog, scrape_blog, e
 from reading import text_to_audio
 import aiohttp
 import random
+from collections import defaultdict
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -342,13 +343,27 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
     url_template = "https://www.hinatazaka46.com/s/official/diary/detail/{}"
 
     if url is None:
-        # data配下にあるmp3ファイルからランダムに選んで再生
+        # data配下にあるmp3ファイルからランダムに選択して再生 
+        # ただし、完全なランダムだと昔のブログばかり再生されるので、月ごとに重みをつける
+
+
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         if len(audio_files) == 0:
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
+        
+        monthly_files = defaultdict(list)
+        for file in audio_files:
+            year_month = '-'.join(file.split('-'[:2]))
+            monthly_files[year_month].append(file)
+
+        weights = [1 / len(files) for files in monthly_files.values()]
+
+        selected_month = random.choices(list(monthly_files.keys()), weights=weights, k=1)[0]
+
+        
        
-        audio_file = random.choice(audio_files)
+        audio_file = random.choice(monthly_files[selected_month])
         audio_file_path = f'data/{audio_file}'
         # 2024-01-01-123456.mp3 の形式で保存されているので、123456の部分を抽出
         url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
