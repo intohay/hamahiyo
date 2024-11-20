@@ -385,7 +385,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
 @bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def read_blogs(interaction: discord.Interaction, num: int = 1):
 
-    audio_files = [f for f in os.listdir('data/audio') if f.endswith('.mp3')]
+    audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
     if len(audio_files) == 0:
         await interaction.response.send_message("音声ファイルがまだないよ！")
         return
