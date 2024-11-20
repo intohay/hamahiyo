@@ -382,48 +382,48 @@ async def generate(interaction: discord.Interaction, prompt: str):
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
 
-@bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-async def read_blogs(interaction: discord.Interaction, num: int = 1):
+# @bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+# async def read_blogs(interaction: discord.Interaction, num: int = 1):
 
-    audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
-    if len(audio_files) == 0:
-        await interaction.response.send_message("音声ファイルがまだないよ！")
-        return
+#     audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
+#     if len(audio_files) == 0:
+#         await interaction.response.send_message("音声ファイルがまだないよ！")
+#         return
 
-    audio_files = random.sample(audio_files, num)
+#     audio_files = random.sample(audio_files, num)
 
-    urls = []
-    for audio_file in audio_files:
-        blog_id = audio_file.split('-')[-1].replace('.mp3', '')
-        date_str = audio_file.split('-')[0]
-        url = f"https://www.hinatazaka46.com/s/official/diary/detail/{blog_id}"
+#     urls = []
+#     for audio_file in audio_files:
+#         blog_id = audio_file.split('-')[-1].replace('.mp3', '')
+#         date_str = audio_file.split('-')[0]
+#         url = f"https://www.hinatazaka46.com/s/official/diary/detail/{blog_id}"
 
-        urls.append(url)
+#         urls.append(url)
 
     
-    for url, audio_file in zip(urls, audio_files):
-        audio_file_path = f'data/{audio_file}'
-        if not os.path.exists(audio_file_path):
-            await interaction.response.send_message("音声ファイルがまだないよ！")
-            return
+#     for url, audio_file in zip(urls, audio_files):
+#         audio_file_path = f'data/{audio_file}'
+#         if not os.path.exists(audio_file_path):
+#             await interaction.response.send_message("音声ファイルがまだないよ！")
+#             return
 
-        if interaction.guild.voice_client:
-            vc = interaction.guild.voice_client
-        else:
-            await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
-            return
+#         if interaction.guild.voice_client:
+#             vc = interaction.guild.voice_client
+#         else:
+#             await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+#             return
         
-        await interaction.response.send_message(f"読むね！{url}")
+#         await interaction.response.send_message(f"読むね！{url}")
 
-        source = discord.FFmpegPCMAudio(audio_file_path)
-        vc.play(source)
+#         source = discord.FFmpegPCMAudio(audio_file_path)
+#         vc.play(source)
 
-        while vc.is_playing():
-            print('playing')
-            await asyncio.sleep(1)
+#         while vc.is_playing():
+#             print('playing')
+#             await asyncio.sleep(1)
 
-        vc.stop()
-        print('done')
+#         vc.stop()
+#         print('done')
         
     
 
