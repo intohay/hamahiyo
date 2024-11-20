@@ -524,13 +524,13 @@ async def run_daily_message():
     selected_word = random.choice(all_words)
     print(f"Selected word for prompt: {selected_word}")
 
-    prompt = f"Q: {selected_word}\nA:"
+    prompt = f"{selected_word}"
 
     async with channel.typing():
         loop = asyncio.get_event_loop()
         with concurrent.futures.ProcessPoolExecutor() as pool:
             try:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, 1.2, 3, ["\t", "Q:"])
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "Q:"])
                 if not answer:
                     print("Failed to generate an answer.")
                     return
@@ -538,8 +538,8 @@ async def run_daily_message():
                 print(f"Error in generating response: {e}")
                 return
 
-    await channel.send(answer)
-    
+    await channel.send(prompt + answer)
+
     # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
     mean_hours = 6  # 平均時間（12時間）
     std_dev_hours = 4  # 標準偏差（4時間）
