@@ -291,10 +291,11 @@ async def handle_generating_and_converting(message: discord.Message):
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
                     answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                    
                     print(answer)
                     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
 
-                    print(audio_content)
+                    # print(audio_content)
             
                 
                     audio_file_path = f"output_{message.id}.wav"
@@ -380,22 +381,78 @@ async def generate(interaction: discord.Interaction, prompt: str):
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
+
+@bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def read_blogs(interaction: discord.Interaction, num: int = 1):
+
+    audio_files = [f for f in os.listdir('data/audio') if f.endswith('.mp3')]
+    if len(audio_files) == 0:
+        await interaction.response.send_message("音声ファイルがまだないよ！")
+        return
+
+    audio_files = random.sample(audio_files, num)
+
+    urls = []
+    for audio_file in audio_files:
+        blog_id = audio_file.split('-')[-1].replace('.mp3', '')
+        date_str = audio_file.split('-')[0]
+        url = f"https://www.hinatazaka46.com/s/official/diary/detail/{blog_id}"
+
+        urls.append(url)
+
+    
+    for url, audio_file in zip(urls, audio_files):
+        audio_file_path = f'data/audio/{audio_file}'
+        if not os.path.exists(audio_file_path):
+            await interaction.response.send_message("音声ファイルがまだないよ！")
+            return
+
+        if interaction.guild.voice_client:
+            vc = interaction.guild.voice_client
+        else:
+            await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+            return
+        
+        await interaction.response.send_message(f"読むね！{url}")
+
+        source = discord.FFmpegPCMAudio(audio_file_path)
+        vc.play(source)
+
+        while vc.is_playing():
+            print('playing')
+            await asyncio.sleep(1)
+        print('done')
+        
+    
+
+
+
+
+
+
 @bot.tree.command(name='read', description='指定したURLのブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def read_blog(interaction: discord.Interaction, url: str = None):
     
     url_template = "https://www.hinatazaka46.com/s/official/diary/detail/{}"
 
     if url is None:
+        
         # data配下にあるmp3ファイルからランダムに選択して再生 
         audio_files = [f for f in os.listdir('data') if f.endswith('.mp3')]
         if len(audio_files) == 0:
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
+
+
         audio_file = random.choice(audio_files)
+
         
+
         audio_file_path = f'data/{audio_file}'
         # 2024-01-01-123456.mp3 の形式で保存されているので、123456の部分を抽出
         url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
+
+
 
     # URLが数字のみの場合、通し番号として扱う
     elif url.isdigit():
@@ -410,6 +467,8 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
         audio_file = audio_files[int(url) - 1]
         audio_file_path = f'data/{audio_file}'
         url = url_template.format(audio_file.split('-')[-1].replace('.mp3', ''))
+        urls = [url]
+
 
     else:
         blog_id = re.search(r'detail/(\d+)', url).group(1)
@@ -417,6 +476,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
 
         # data/{blog_id}.mp3 が存在するか確認
         audio_file_path = f'data/{date_str}-{blog_id}.mp3'
+        urls = [url]
 
 
 
