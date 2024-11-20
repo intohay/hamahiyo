@@ -402,7 +402,7 @@ async def read_blogs(interaction: discord.Interaction, num: int = 1):
 
     
     for url, audio_file in zip(urls, audio_files):
-        audio_file_path = f'data/audio/{audio_file}'
+        audio_file_path = f'data/{audio_file}'
         if not os.path.exists(audio_file_path):
             await interaction.response.send_message("音声ファイルがまだないよ！")
             return
