@@ -241,6 +241,7 @@ async def handle_generating_and_converting(message: discord.Message):
                 reply_message = await message.channel.fetch_message(message.reference.message_id)
                 if reply_message and reply_message.author != bot.user:
                     question = reply_message.content
+                    message = reply_message
                     
 
 
