@@ -421,6 +421,8 @@ async def read_blogs(interaction: discord.Interaction, num: int = 1):
         while vc.is_playing():
             print('playing')
             await asyncio.sleep(1)
+
+        vc.stop()
         print('done')
         
     
