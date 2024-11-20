@@ -237,6 +237,13 @@ async def handle_generating_and_converting(message: discord.Message):
             # メンションされたら応答
             question = message.content.replace(f'<@{bot.user.id}>', '').strip()
 
+            if message.reference is not None:
+                reply_message = await message.channel.fetch_message(message.reference.message_id)
+                if reply_message and reply_message.author != bot.user:
+                    question = reply_message.content
+                    
+
+
             is_debug, question = extract_d_option(question)  # -dオプションを抽出
             temperature, question = extract_t_option(question)  # -tオプションを抽出
 
@@ -244,7 +251,7 @@ async def handle_generating_and_converting(message: discord.Message):
             if is_reply:
 
                 current_message = message
-                # system_prompt = "質問返しまーす！\t"
+                
                 prompt = f"Q: {question}\nA:"
                 while current_message.reference is not None:
                     
