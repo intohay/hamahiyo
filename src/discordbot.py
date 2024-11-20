@@ -139,23 +139,36 @@ def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", 
     return answer
 
 
-def extract_words(text):
+def extract_phrases(text):
     """
-    日本語の文章から形態解析を行い、単語を抽出します。
-    名詞、動詞、形容詞を対象にします。
+    日本語の文章から形態解析を行い、意味のあるフレーズを抽出します。
+    主に名詞句（名詞+助詞+名詞、形容詞+名詞など）を対象とします。
     """
-    words = []
+    phrases = []
     node = mecab.parseToNode(text)
+    current_phrase = []  # フレーズを一時的に保持するリスト
+
     while node:
         word = node.surface  # 単語の表層形
         feature = node.feature.split(",")  # 品詞情報
 
-        # 名詞、動詞、形容詞のみを対象
-        if feature[0] in ["名詞", "動詞", "形容詞"]:
-            words.append(word)
-
+        if feature[0] in ["名詞", "形容詞"]:  # 名詞や形容詞ならフレーズを構成
+            current_phrase.append(word)
+        elif feature[0] == "助詞" and current_phrase:  # 助詞が続いたらフレーズを保持
+            current_phrase.append(word)
+        else:
+            # 現在のフレーズを phrases に保存してリセット
+            if current_phrase:
+                phrases.append("".join(current_phrase))
+                current_phrase = []
+        
         node = node.next
-    return words
+
+    # 最後のフレーズを保存
+    if current_phrase:
+        phrases.append("".join(current_phrase))
+
+    return phrases
     
 
 @bot.event
@@ -515,11 +528,15 @@ async def run_daily_message():
 
     all_words = []
     for message in messages:
-        all_words.extend(extract_words(message))
+        all_words.extend(extract_phrases(message))
     
     if not all_words:
         print("No valid words found in recent messages.")
         return
+
+    # 日本語のみを対象にする
+    all_words = [word for word in all_words if re.match(r'^[ぁ-んァ-ン一-龥]', word)]
+
 
     selected_word = random.choice(all_words)
     print(f"Selected word for prompt: {selected_word}")
@@ -542,7 +559,7 @@ async def run_daily_message():
 
     # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
     mean_hours = 6  # 平均時間（12時間）
-    std_dev_hours = 4  # 標準偏差（4時間）
+    std_dev_hours = 3  # 標準偏差（4時間）
     next_wait_time_seconds = get_next_wait_time(mean_hours * 3600, std_dev_hours * 3600)
 
     print(f"Next daily_yaho will run in {next_wait_time_seconds / 3600:.2f} hours.")
