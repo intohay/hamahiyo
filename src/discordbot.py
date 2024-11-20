@@ -547,7 +547,7 @@ async def run_daily_message():
         loop = asyncio.get_event_loop()
         with concurrent.futures.ProcessPoolExecutor() as pool:
             try:
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "Q:"])
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
                 answer = answer.replace("\t", "\n")
                 if not answer:
                     print("Failed to generate an answer.")
