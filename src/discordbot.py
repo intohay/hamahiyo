@@ -15,6 +15,12 @@ from reading import text_to_audio
 import aiohttp
 import random
 from collections import defaultdict
+
+import MeCab
+
+mecab = MeCab.Tagger("-Ochasen")
+
+
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -133,7 +139,23 @@ def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", 
     return answer
 
 
+def extract_words(text):
+    """
+    日本語の文章から形態解析を行い、単語を抽出します。
+    名詞、動詞、形容詞を対象にします。
+    """
+    words = []
+    node = mecab.parseToNode(text)
+    while node:
+        word = node.surface  # 単語の表層形
+        feature = node.feature.split(",")  # 品詞情報
 
+        # 名詞、動詞、形容詞のみを対象
+        if feature[0] in ["名詞", "動詞", "形容詞"]:
+            words.append(word)
+
+        node = node.next
+    return words
     
 
 @bot.event
@@ -149,7 +171,7 @@ async def on_ready():
         await voice_channel.connect()
         print("Bot reconnected to the voice channel.")
     
-    schedule_daily_yaho()
+    asyncio.create_task(run_daily_message())
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -461,26 +483,73 @@ async def leave_voice(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("ボイスチャンネルに接続していないよ！")
 
-@tasks.loop(hours=24)
-async def daily_yaho():
-    await bot.wait_until_ready()  # ボットが完全に準備されるのを待つ
-    channel = bot.get_channel(CHANNEL_ID)
-    if channel:
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
-                data = await response.json()
-                message = data['message']
-                message_list = re.split(r'[\t\n]', message)[:3]
-                message = '\n'.join(message_list)
-                await channel.send(message)
 
-def schedule_daily_yaho():
-    now = datetime.now()
-    target_time = datetime.combine(now.date(), time(7, 0))
-    if now > target_time:
-        target_time += timedelta(days=1)
-    wait_time = (target_time - now).total_seconds()
-    asyncio.get_event_loop().call_later(wait_time, daily_yaho.start)
+def get_next_wait_time(mean: float, std_dev: float) -> float:
+    """
+    次の投稿までの時間を正規分布に基づいてサンプリング。
+    負の値にならないよう、再サンプリングを実施。
+    """
+    wait_time = -1
+    while wait_time <= 0:
+        wait_time = random.gauss(mean, std_dev)
+    return wait_time
+
+
+
+async def run_daily_message():
+    """
+    ランダムな間隔で `daily_yaho` を実行し、次回の投稿時間をスケジュールする。
+    """
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        print(f"Channel with ID {CHANNEL_ID} not found.")
+        return
+
+    messages = []
+    async for message in channel.history(limit=10):
+        messages.append(message.content)
+
+    if not messages:
+        print("No messages found to generate a prompt.")
+        return
+
+    all_words = []
+    for message in messages:
+        all_words.extend(extract_words(message))
+    
+    if not all_words:
+        print("No valid words found in recent messages.")
+        return
+
+    selected_word = random.choice(all_words)
+    print(f"Selected word for prompt: {selected_word}")
+
+    prompt = f"Q: {selected_word}\nA:"
+
+    async with channel.typing():
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ProcessPoolExecutor() as pool:
+            try:
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, 1.2, 3, ["\t", "Q:"])
+                if not answer:
+                    print("Failed to generate an answer.")
+                    return
+            except Exception as e:
+                print(f"Error in generating response: {e}")
+                return
+
+    await channel.send(answer)
+    
+    # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
+    mean_hours = 6  # 平均時間（12時間）
+    std_dev_hours = 4  # 標準偏差（4時間）
+    next_wait_time_seconds = get_next_wait_time(mean_hours * 3600, std_dev_hours * 3600)
+
+    print(f"Next daily_yaho will run in {next_wait_time_seconds / 3600:.2f} hours.")
+    # 次回の投稿をスケジュール
+    await asyncio.sleep(next_wait_time_seconds)
+    await run_daily_message()
+
 
 
 async def main():
