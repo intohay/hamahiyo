@@ -429,6 +429,9 @@ async def generate(interaction: discord.Interaction, prompt: str):
 
 @bot.tree.command(name='echo', description='指定した文章を読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def echo(interaction: discord.Interaction, text: str):
+
+    await interaction.response.defer()
+
     loop = asyncio.get_event_loop()
 
     with concurrent.futures.ProcessPoolExecutor() as pool:
@@ -455,7 +458,7 @@ async def echo(interaction: discord.Interaction, text: str):
         os.remove(audio_file_path)
         print('done')
 
-        await interaction.response.send_message(text)
+        await interaction.followup.send(text) 
 
 
 
