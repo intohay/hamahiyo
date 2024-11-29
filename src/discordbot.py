@@ -427,7 +427,33 @@ async def generate(interaction: discord.Interaction, prompt: str):
         
     
 
+@bot.tree.command(name='echo', description='指定した文章を読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def echo(interaction: discord.Interaction, text: str):
+    loop = asyncio.get_event_loop()
 
+    with concurrent.futures.ProcessPoolExecutor() as pool:
+        audio_content = await loop.run_in_executor(pool, text_to_speech, text)
+
+        audio_file_path = f"output_{interaction.id}.wav"
+
+        with open(audio_file_path, 'wb') as f:
+            f.write(audio_content)
+
+        if interaction.guild.voice_client:
+            vc = interaction.guild.voice_client
+        else:
+            await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+            return
+
+        source = discord.FFmpegPCMAudio(audio_file_path)
+        vc.play(source)
+
+        while vc.is_playing():
+            print('playing')
+            await asyncio.sleep(1)
+
+        os.remove(audio_file_path)
+        print('done')
 
 
 
