@@ -338,6 +338,37 @@ async def yaho(interaction: discord.Interaction):
             message = '\n'.join(message_list)
             await interaction.response.send_message(message)
 
+    if interaction.guild.voice_client:
+        vc = interaction.guild.voice_client
+
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ProcessPoolExecutor() as pool:
+            audio_content = await loop.run_in_executor(pool, text_to_speech, message)
+
+            audio_file_path = f"output_{interaction.id}.wav"
+
+            with open(audio_file_path, 'wb') as f:
+                f.write(audio_content)
+
+            
+
+            source = discord.FFmpegPCMAudio(audio_file_path)
+            vc.play(source)
+
+            while vc.is_playing():
+                print('playing')
+                await asyncio.sleep(1)
+
+            os.remove(audio_file_path)
+            print('done')
+
+    else:
+        await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+        return
+
+    
+    
+
 # 危険な感じがするのでコメントアウト
 # @bot.tree.command(name='voice', description='やっほー！から始まる音声を返します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 # async def yaho_voice(interaction: discord.Interaction):
@@ -381,7 +412,35 @@ async def generate(interaction: discord.Interaction, prompt: str):
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
+    
+    if interaction.guild.voice_client:
+        vc = interaction.guild.voice_client
 
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ProcessPoolExecutor() as pool:
+            audio_content = await loop.run_in_executor(pool, text_to_speech, message)
+
+            audio_file_path = f"output_{interaction.id}.wav"
+
+            with open(audio_file_path, 'wb') as f:
+                f.write(audio_content)
+
+            
+
+            source = discord.FFmpegPCMAudio(audio_file_path)
+            vc.play(source)
+
+            while vc.is_playing():
+                print('playing')
+                await asyncio.sleep(1)
+
+            os.remove(audio_file_path)
+            print('done')
+
+    else:
+        await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+        return
+    
 # @bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 # async def read_blogs(interaction: discord.Interaction, num: int = 1):
 
