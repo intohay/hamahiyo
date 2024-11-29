@@ -455,6 +455,10 @@ async def echo(interaction: discord.Interaction, text: str):
         os.remove(audio_file_path)
         print('done')
 
+        await interaction.response.send_message(text)
+
+
+
 
 
 
