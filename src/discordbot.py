@@ -522,6 +522,29 @@ async def echo(interaction: discord.Interaction, text: str):
 
 
 
+@bot.tree.command(name='speech', description='卒業セレモニーのスピーチを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def speech(interaction: discord.Interaction):
+    await interaction.response.send_message("卒業セレモニーのスピーチを読むね！")
+
+    audio_file_path = 'data/speech.mp3'
+
+    if not os.path.exists(audio_file_path):
+        await interaction.response.send_message("音声ファイルがまだないよ！")
+        return
+
+    if interaction.guild.voice_client:
+        vc = interaction.guild.voice_client
+    else:
+        await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+        return
+
+    source = discord.FFmpegPCMAudio(audio_file_path)
+    vc.play(source)
+
+    while vc.is_playing():
+        print('playing')
+        await asyncio.sleep(1)
+    print('done')
 
 
 @bot.tree.command(name='read', description='指定したURLのブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
