@@ -152,7 +152,8 @@ def extract_phrases(text):
         word = node.surface  # 単語の表層形
         feature = node.feature.split(",")  # 品詞情報
 
-        if feature[0] in ["名詞", "形容詞"]:  # 名詞や形容詞ならフレーズを構成
+        # 名詞、形容詞だが、かつ「ん」や非自立の名詞は除外する
+        if feature[0] in ["名詞", "形容詞"] and word != "ん" and feature[1] != "非自立":
             current_phrase.append(word)
         elif feature[0] == "助詞" and current_phrase:  # 助詞が続いたらフレーズを保持
             current_phrase.append(word)
@@ -169,7 +170,6 @@ def extract_phrases(text):
         phrases.append("".join(current_phrase))
 
     return phrases
-    
 
 @bot.event
 async def on_ready():
