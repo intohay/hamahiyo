@@ -623,7 +623,7 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
         print('done')
 
 @bot.tree.command(name='sing', description='指定した番号の歌を歌います', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-async def sing(interaction: discord.Interaction, num: int):
+async def sing(interaction: discord.Interaction, num: int = None):
 
     # data/songsの中のmp3のファイル名(拡張子なし)を取得して、numが指定されていない場合はその一覧をインデックスとともに返す
     if num is None:
