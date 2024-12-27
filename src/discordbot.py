@@ -624,26 +624,23 @@ async def read_blog(interaction: discord.Interaction, url: str = None):
 
 @bot.tree.command(name='sing', description='指定した番号の歌を歌います', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def sing(interaction: discord.Interaction, num: int = None):
+    # data/songsの中のmp3とm4aのファイル名(拡張子なし)を取得
+    songs = [f for f in os.listdir('songs') if f.endswith(('.mp3', '.m4a'))]
+    songs.sort()  # アルファベット順にソート
 
-    # data/songsの中のmp3のファイル名(拡張子なし)を取得して、numが指定されていない場合はその一覧をインデックスとともに返す
+    # numが指定されていない場合はその一覧をインデックスとともに返す
     if num is None:
-        songs = [f for f in os.listdir('songs') if f.endswith('.mp3')]
-        songs.sort()
-        song_list = '\n'.join([f"{i+1}: {song.replace('.mp3', '')}" for i, song in enumerate(songs)])
+        song_list = '\n'.join([f"{i+1}: {os.path.splitext(song)[0]}" for i, song in enumerate(songs)])
         await interaction.response.send_message(f"歌う歌を選んでね！\n{song_list}")
         return
-    
 
     # numが指定されている場合、その番号の歌を歌う
-    songs = [f for f in os.listdir('songs') if f.endswith('.mp3')]
-    songs.sort()
     if num > len(songs):
         await interaction.response.send_message("指定した番号の歌が存在しないよ！")
         return
-    
+
     song = songs[num - 1]
     audio_file_path = f'songs/{song}'
-
 
     if not os.path.exists(audio_file_path):
         await interaction.response.send_message("音声ファイルがまだないよ！")
@@ -655,7 +652,7 @@ async def sing(interaction: discord.Interaction, num: int = None):
         await interaction.response.send_message("ボイスチャンネルにいないと歌えないよ！")
         return
 
-    await interaction.response.send_message(f"『{song.replace('.mp3', '')}』を歌うね！")
+    await interaction.response.send_message(f"『{os.path.splitext(song)[0]}』を歌うね！")
 
     source = discord.FFmpegPCMAudio(audio_file_path)
     vc.play(source)
@@ -664,6 +661,7 @@ async def sing(interaction: discord.Interaction, num: int = None):
         print('playing')
         await asyncio.sleep(1)
     print('done')
+
 
 @bot.tree.command(name='convert', description='指定したURLのブログを音声に変換します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
 async def convert_blog(interaction: discord.Interaction, url: str):
