@@ -99,6 +99,7 @@ def post_tweet():
         # 最初のツイートを投稿
         previous_tweet = None
         for part in messages:
+            part = part + "\n#ハマヒヨトーク"
             if previous_tweet is None:
                 # 最初のツイート
                 tweet = client.create_tweet(text=part)
