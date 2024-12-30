@@ -96,7 +96,7 @@ def completion(prompt):
     data = {
         "prompt": prompt,
         "n_predict": 256,
-        "repeat_penalty": 1.2,
+        # "repeat_penalty": 1.2,
     }
 
     response = requests.post(url, json=data)
