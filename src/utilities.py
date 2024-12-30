@@ -218,6 +218,7 @@ def paraphrase_text(text):
         "SHIBUYA TSUTAYA": "シブヤ ツタヤ",
         "MARQUEE": "マーキー",
         "MC": "エムシー",
+        "Happy Magical Tour": "ハッピーマジカルツアー",
         }
     
     for key, value in eng_jpn_dict.items():
