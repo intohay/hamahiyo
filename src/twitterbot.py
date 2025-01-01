@@ -83,7 +83,30 @@ def fetch_message():
         return None
     
 
-def post_tweet():
+def post_tweet(messages=None):
+
+    if messages is not None:
+        previous_tweet = None
+        for message in messages:
+            message = message + "\n#ハマヒヨトーク"
+            if previous_tweet is None:
+                # ツイートを投稿
+                tweet = client.create_tweet(text=message)
+                print(f"ツイートを投稿しました: {message}")
+                previous_tweet = tweet.data['id']
+            else:
+                # 前のツイートにリプライとして投稿
+                tweet = client.create_tweet(text=message, in_reply_to_tweet_id=previous_tweet)
+                print(f"ツイートを続けました: {message}")
+                previous_tweet = tweet.data['id']
+
+
+        return
+
+
+            
+
+
     try:
         # メッセージを取得
         message = fetch_message()
@@ -122,13 +145,18 @@ def main():
     
 
     # 最初のツイート時刻をハードコーディング
-    first_tweet_time = datetime(year=2025, month=1, day=4, hour=12, minute=0, second=0)
+    first_tweet_time = datetime(year=2025, month=1, day=4, hour=14, minute=0, second=0)
     print(f"最初のツイート時刻: {first_tweet_time}")
 
     # 最初のツイートを待機して投稿
     sleep_duration = (first_tweet_time - datetime.now()).total_seconds()
     time.sleep(sleep_duration)
-    post_tweet()
+    post_tweet(messages=[
+        "やほー！\n今日はねー早くに目が覚めたんだけど、ベットが冷たくて寝返りしよーって思ったらいつのまにか眠っちゃってました😂😂", 
+        "でも寒かった🥲",
+        "でも！！！\nお母さんがオール電化にしたから寒くないんだ🙄",
+        "でもやっぱり寒いよ🥲",
+        "マンボウちゃんは寒いの嫌い？"])
 
 
     while True:
