@@ -122,7 +122,7 @@ def main():
     
 
     # 最初のツイート時刻をハードコーディング
-    first_tweet_time = datetime(year=2025, month=1, day=5, hour=12, minute=0, second=0)
+    first_tweet_time = datetime(year=2025, month=1, day=4, hour=12, minute=0, second=0)
     print(f"最初のツイート時刻: {first_tweet_time}")
 
     # 最初のツイートを待機して投稿
