@@ -8,7 +8,7 @@ from datetime import datetime, time, timedelta
 import pdb
 import re
 from discord import File
-from generate import n_messages_completion, tokenize, text_to_speech
+from generate import n_messages_completion, tokenize, text_to_speech, retry_completion
 import aiohttp
 from utilities import contains_bad_words, extract_name_from_blog, scrape_blog, extract_date_from_blog
 from reading import text_to_audio
@@ -119,24 +119,7 @@ def extract_d_option(prompt: str):
     return False, prompt
 
 
-def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", "\n", "Q:"]):
-    try_count = 0
-    answer = None
 
-    while try_count < max_retries:
-        try:
-            # 回答生成
-            answer = n_messages_completion(prompt, num=num, temperature=temperature, stop=stop)
-            if answer and answer != "" and not contains_bad_words(answer):
-                break  # 成功したらループを抜ける
-            else:
-                answer = "もう一回言ってみて！"
-        except Exception as e:
-            answer = f"An error occurred: {str(e)}"
-            break  # デバッグモードなら即座に終了
-        try_count += 1
-
-    return answer
 
 
 def extract_phrases(text):
@@ -253,7 +236,7 @@ async def handle_generating_and_converting(message: discord.Message):
 
                 current_message = message
                 
-                prompt = f"Q: {question}\nA:"
+                prompt = f"Q: {question}\nA: "
                 while current_message.reference is not None:
                     
                     previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
@@ -276,7 +259,7 @@ async def handle_generating_and_converting(message: discord.Message):
                 
 
             else:
-                prompt = f"Q: {question}\nA:"
+                prompt = f"Q: {question}\nA: "
 
             print(prompt)
             

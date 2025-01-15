@@ -4,6 +4,7 @@ import os
 
 import requests
 from dotenv import load_dotenv
+from utilities import contains_bad_words
 load_dotenv()
 
 # model_path = os.path.join(os.path.dirname(__file__), '../finetuned_gpt2')
@@ -133,6 +134,28 @@ def text_to_speech(text):
     else:
         print(f"An error occurred: {response.text}")
         return None
+
+
+
+def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", "\n", "Q:"]):
+    try_count = 0
+    answer = None
+
+    while try_count < max_retries:
+        try:
+            # 回答生成
+            answer = n_messages_completion(prompt, num=num, temperature=temperature, stop=stop)
+            if answer and answer != "" and not contains_bad_words(answer):
+                break  # 成功したらループを抜ける
+            else:
+                answer = "もう一回言ってみて！"
+        except Exception as e:
+            answer = f"An error occurred: {str(e)}"
+            break  # デバッグモードなら即座に終了
+        try_count += 1
+
+    return answer
+
 
 if __name__ == '__main__':
     # from discordbot import generate_message_from_prompt
