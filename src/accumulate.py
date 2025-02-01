@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask_migrate import Migrate
 import fcntl
 from utilities import contains_bad_words
-
+from transformers import AutoTokenizer
 LOCK_FILE = 'accumulator.lock'
 
 
@@ -38,15 +38,27 @@ class MessageStock(db.Model):
     message = db.Column(db.String, nullable=False)
     is_released = db.Column(db.Boolean, default=False)
 
+tokenizer = AutoTokenizer.from_pretrained("tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3")
 
 
 def generate_and_store_messages():
+
+    system_prompt = [{"role": "system", "content": "あなたは「ハマヒヨちゃん」というキャラクターです。一人称は「私」または「ヒヨタン」を使い、それ以外使わないで下さい。"}]
+
     with app.app_context():
         # メッセージを生成してストックに追加
         # messages_list = generate_messages("<s>やほー！[SEP]", num_sentences=50)
+
+
         for i in range(150):
-            messages = "やほー！\t" + completion("やほー！\t")
-       
+
+            
+            prompt = tokenizer.apply_chat_template(system_prompt, add_generation_prompt=True, tokenize=True) + tokenizer.encode("やほー！\t", add_special_tokens=False)
+
+
+            messages = "やほー！\t" + completion(prompt)
+            
+            
             if contains_bad_words(messages):
                 continue
             
