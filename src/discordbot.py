@@ -783,7 +783,7 @@ async def run_daily_message():
                 print(f"Error in generating response: {e}")
                 return
 
-    await channel.send(answer)
+    await channel.send(selected_word + answer)
 
     # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
     mean_hours = 6  # 平均時間（12時間）
