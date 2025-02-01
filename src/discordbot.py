@@ -15,6 +15,7 @@ from reading import text_to_audio
 import aiohttp
 import random
 from collections import defaultdict
+from transformers import AutoTokenizer
 
 import MeCab
 
@@ -35,6 +36,8 @@ def normalize_text(text):
     # 全角と半角を統一
     return unicodedata.normalize('NFKC', text)
 
+system_prompt = "あなたは「ハマヒヨちゃん」というキャラクターです。一人称は「私」または「ヒヨタン」を使い、それ以外使わないで下さい。"
+tokenizer = AutoTokenizer.from_pretrained("tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3")
 
 # def generate_message_from_prompt(prompt):
 #     original_prompt = prompt
@@ -210,16 +213,15 @@ async def handle_generating_and_converting(message: discord.Message):
     is_mention = bot.user.mentioned_in(message)
     is_reply = message.reference is not None and message.reference.resolved.author == bot.user
 
-    # トークン数カウント用の関数
-    def get_token_count(text):
-        return len(tokenize(text))
+ 
     
     # Botがメンションされたかどうか確認
     if is_mention or is_reply:
         async with message.channel.typing():
             # メンションされたら応答
             question = message.content.replace(f'<@{bot.user.id}>', '').strip()
-
+            
+            # botに聞いてなかった質問を後から質問にしたい場合
             if message.reference is not None:
                 reply_message = await message.channel.fetch_message(message.reference.message_id)
                 if reply_message and reply_message.author != bot.user:
@@ -233,25 +235,33 @@ async def handle_generating_and_converting(message: discord.Message):
 
 
             if is_reply:
+                chat = [{"role": "system", "content": system_prompt}]
 
+                conversation = [{"role": "user", "content": question}]
                 current_message = message
                 
-                prompt = f"Q: {question}\nA: "
+                # prompt = f"Q: {question}\nA: "
                 while current_message.reference is not None:
                     
                     previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
                     previous_answer = previous_message.content
 
+                    conversation = [{"role": "assistant", "content": previous_answer}] + conversation
+
                     if previous_message.reference:
                         more_previous_message = await current_message.channel.fetch_message(previous_message.reference.message_id)
                         previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
+
+                        conversation = [{"role": "user", "content": previous_question}] + conversation
                     else:
                         break
+                    
 
-                    new_prompt = f"Q: {previous_question}\nA: {previous_answer}\n" + prompt
-                    if get_token_count(new_prompt) > 200:
+                    prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
+
+                    if len(tokenizer.encode(prompt)) > 500:
                         break
-                    prompt = new_prompt
+                
 
                     current_message = more_previous_message
                 
@@ -259,7 +269,10 @@ async def handle_generating_and_converting(message: discord.Message):
                 
 
             else:
-                prompt = f"Q: {question}\nA: "
+
+                chat = [{"role": "system", "content": system_prompt}, {"role": "user", "content": question}]
+                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
+
 
             print(prompt)
             
@@ -270,12 +283,14 @@ async def handle_generating_and_converting(message: discord.Message):
 
             if message.guild.voice_client and message.author.voice and message.author.voice.channel:
                 
-
+                
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
-                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t", "Q:"])
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
                     
                     print(answer)
+
+
                     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
 
                     # print(audio_content)
@@ -306,7 +321,7 @@ async def handle_generating_and_converting(message: discord.Message):
             else:
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
-                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t", "Q:"])
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t"])
                     await message.reply(answer)
             # メッセージにリプライ
             
@@ -749,7 +764,11 @@ async def run_daily_message():
     selected_word = random.choice(all_words)
     print(f"Selected word for prompt: {selected_word}")
 
-    prompt = f"{selected_word}"
+
+    chat = [{"role": "system", "content": system_prompt}]
+
+    prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True) + tokenizer.encode(selected_word, add_special_tokens=False)
+    
 
     async with channel.typing():
         loop = asyncio.get_event_loop()
@@ -764,7 +783,7 @@ async def run_daily_message():
                 print(f"Error in generating response: {e}")
                 return
 
-    await channel.send(prompt + answer)
+    await channel.send(answer)
 
     # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
     mean_hours = 6  # 平均時間（12時間）

@@ -137,7 +137,7 @@ def text_to_speech(text):
 
 
 
-def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", "\n", "Q:"]):
+def retry_completion(prompt, num=1, temperature=1.2, max_retries=3, stop=["\t", "\n"]):
     try_count = 0
     answer = None
 
