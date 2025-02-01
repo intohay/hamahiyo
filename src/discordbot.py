@@ -259,7 +259,7 @@ async def handle_generating_and_converting(message: discord.Message):
 
                     prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
 
-                    if len(tokenizer.encode(prompt)) > 500:
+                    if len(prompt) > 500:
                         break
                 
 
