@@ -402,11 +402,14 @@ async def generate(interaction: discord.Interaction, prompt: str):
 
     temperature, clean_prompt = extract_t_option(prompt)  # -tオプションを抽出
 
+    chat = [{"role": "system", "content": system_prompt}]
+    template_applied_prompt = tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize=True) + tokenizer.encode(clean_prompt, add_special_tokens=False)
+
     try:
         while True:
-            completion = n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
+            completion = n_messages_completion(template_applied_prompt, num=2, temperature=temperature).replace("\t", "\n")
             if not contains_bad_words(completion):
-                message = f"**{clean_prompt}**" + n_messages_completion(clean_prompt, num=2, temperature=temperature).replace("\t", "\n")
+                message = f"**{clean_prompt}**" + completion
                 break
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
