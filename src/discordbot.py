@@ -241,6 +241,7 @@ async def handle_generating_and_converting(message: discord.Message):
                 current_message = message
                 
                 # prompt = f"Q: {question}\nA: "
+                # prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
                 while current_message.reference is not None:
                     
                     previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
@@ -253,8 +254,9 @@ async def handle_generating_and_converting(message: discord.Message):
                         previous_question = more_previous_message.content.replace(f'<@{bot.user.id}>', '').strip()
 
                         conversation = [{"role": "user", "content": previous_question}] + conversation
-                    else:
-                        break
+
+                        current_message = more_previous_message
+                    
                     
 
                     prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
@@ -263,7 +265,8 @@ async def handle_generating_and_converting(message: discord.Message):
                         break
                 
 
-                    current_message = more_previous_message
+                    if previous_message.reference is None:
+                        break
                 
                 
                 
@@ -274,7 +277,7 @@ async def handle_generating_and_converting(message: discord.Message):
                 prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
 
 
-            print(prompt)
+            # print(prompt)
             
             
             # print(answer)
@@ -288,7 +291,7 @@ async def handle_generating_and_converting(message: discord.Message):
                 with concurrent.futures.ProcessPoolExecutor() as pool:
                     answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
                     
-                    print(answer)
+                    # print(answer)
 
 
                     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
