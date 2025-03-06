@@ -74,7 +74,7 @@ def n_messages_completion(prompt, num=2, temperature=1.2, stop=["\t", "\n", "Q:"
 
         data = {
             "prompt": prompt,
-            "n_predict": 256,
+            "n_predict": 512,
             "stop": stop,
             "repeat_penalty": 1.2,
             "temperature": temperature
@@ -96,7 +96,7 @@ def completion(prompt):
 
     data = {
         "prompt": prompt,
-        "n_predict": 256,
+        "n_predict": 512,
         # "repeat_penalty": 1.2,
     }
 
