@@ -61,7 +61,7 @@ def fetch_message():
         response = requests.get(url)
         
         # レスポンスが正常か確認
-        response.raise_for_status()  # ステータスコードが200以外の場合例外を発生
+        response.raise_for_status()
 
         # JSON形式でレスポンスを解析
         data = response.json()
@@ -69,6 +69,15 @@ def fetch_message():
         # `message` フィールドを抽出
         if "message" in data:
             message = data["message"]
+            
+            # タブの数が2個以上になるまで再取得
+            while message.count('\t') < 2:
+                print("ツイート数が少なすぎるため、再取得します")
+                response = requests.get(url)
+                response.raise_for_status()
+                data = response.json()
+                message = data["message"]
+            
             print(f"取得したメッセージ: {message}")
             return message
         else:
@@ -118,6 +127,7 @@ def post_tweet(messages=None):
         
         # メッセージをタブ区切りで分割
         messages = message.split('\t')
+        
 
         # 最初のツイートを投稿
         previous_tweet = None
