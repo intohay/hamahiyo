@@ -4,7 +4,7 @@ import asyncio
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import requests
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import pdb
 import re
 from discord import File
@@ -735,17 +735,23 @@ async def run_daily_message():
         print("No messages found to generate a prompt.")
         return
 
-    # 今日の日付を取得
-    today = datetime.now().date()
+    # 今日の日付を取得（JST）
+    jst = timezone(timedelta(hours=9))
+    today = datetime.now(jst).date()
+    print(f"Today (JST): {today}")
 
     # 最後の投稿が今日かどうかを確認
     is_first_post_of_day = True
     for message in messages:
         if message.author == bot.user:
-            message_date = message.created_at.date()
+            # メッセージの時刻をJSTに変換
+            message_date = message.created_at.astimezone(jst).date()
+            print(f"Message date: {message_date}, Message time: {message.created_at.astimezone(jst)}")
             if message_date == today:
                 is_first_post_of_day = False
                 break
+
+    print(f"Is first post of day: {is_first_post_of_day}")
 
     # メッセージ履歴を会話形式に変換し、トークン数に基づいて制限
     conversation = []
