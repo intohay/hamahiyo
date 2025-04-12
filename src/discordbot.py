@@ -17,9 +17,9 @@ import random
 from collections import defaultdict
 from transformers import AutoTokenizer
 
-import MeCab
+# import MeCab
 
-mecab = MeCab.Tagger("-Ochasen")
+# mecab = MeCab.Tagger("-Ochasen")
 
 
 load_dotenv()
@@ -370,30 +370,6 @@ async def yaho(interaction: discord.Interaction):
     
     
 
-# 危険な感じがするのでコメントアウト
-# @bot.tree.command(name='voice', description='やっほー！から始まる音声を返します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
-# async def yaho_voice(interaction: discord.Interaction):
-#     # 応答を保留
-#     await interaction.response.defer()
-
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get('https://mambouchan.com/hamahiyo/generate') as response:
-#             data = await response.json()
-#             message = data['message']
-#             message_list = re.split(r'[\t\n]', message)[:3]
-#             message = '\n'.join(message_list)
-#             # 「やほ」を「やっほ」に変換
-#             message = message.replace('やほ', 'やっほ')
-
-#             # テキストを音声に変換
-#             audio_content = text_to_speech(message)
-
-#             # 音声ファイルを一時保存
-#             with open('output.wav', 'wb') as f:
-#                 f.write(audio_content)
-            
-#             # followupで音声ファイルを送信
-#             await interaction.followup.send(file=File("output.wav"))
 
 
 @bot.tree.command(name='prompt', description='指定した文章から文章を生成します')
@@ -740,60 +716,98 @@ def get_next_wait_time(mean: float, std_dev: float) -> float:
 
 async def run_daily_message():
     """
-    ランダムな間隔で `daily_yaho` を実行し、次回の投稿時間をスケジュールする。
+    メッセージ履歴を文脈として使用し、その続きとしてメッセージを生成する。
+    トークン数の制限（350トークン）を考慮して履歴を制限する。
+    その日の最初の投稿の場合は「やほー！」を文脈の一部として含めて生成し、実際の投稿にも含める。
+    新しいメッセージを優先的に保持し、古いメッセージは必要に応じて捨てる。
     """
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
         print(f"Channel with ID {CHANNEL_ID} not found.")
         return
 
+    # メッセージ履歴を取得（最大20件まで取得）
     messages = []
-    async for message in channel.history(limit=10):
-        messages.append(message.content)
+    async for message in channel.history(limit=20):
+        messages.append(message)
 
     if not messages:
         print("No messages found to generate a prompt.")
         return
 
-    all_words = []
+    # 今日の日付を取得
+    today = datetime.now().date()
+
+    # 最後の投稿が今日かどうかを確認
+    is_first_post_of_day = True
     for message in messages:
-        all_words.extend(extract_phrases(message))
-    
-    if not all_words:
-        print("No valid words found in recent messages.")
-        return
+        if message.author == bot.user:
+            message_date = message.created_at.date()
+            if message_date == today:
+                is_first_post_of_day = False
+                break
 
-    # 日本語のみを対象にする
-    all_words = [word for word in all_words if re.match(r'^[ぁ-んァ-ン一-龥]', word)]
+    # メッセージ履歴を会話形式に変換し、トークン数に基づいて制限
+    conversation = []
+    total_tokens = 0
+    TOKEN_LIMIT = 350
 
+    # システムプロンプトのトークン数を計算
+    system_tokens = len(tokenizer.encode(system_prompt))
+    total_tokens += system_tokens
 
-    selected_word = random.choice(all_words)
-    print(f"Selected word for prompt: {selected_word}")
+    # 新しい順に処理（messagesは新しい順に並んでいる）
+    for message in messages:
+        # メッセージのトークン数を計算
+        message_tokens = len(tokenizer.encode(message.content))
+        
+        # トークン制限を超える場合は処理を終了
+        if total_tokens + message_tokens > TOKEN_LIMIT:
+            break
 
+        # 会話履歴に追加（新しい順に追加）
+        if message.author == bot.user:
+            conversation.insert(0, {"role": "assistant", "content": message.content})
+        else:
+            conversation.insert(0, {"role": "user", "content": message.content})
+        
+        total_tokens += message_tokens
 
-    chat = [{"role": "system", "content": system_prompt}]
+    print(f"Total tokens used: {total_tokens}")
 
-    prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True) + tokenizer.encode(selected_word, add_special_tokens=False)
-    
+    # システムプロンプトを追加
+    chat = [{"role": "system", "content": system_prompt}] + conversation
 
+    # その日の最初の投稿の場合は「やほー！」を追加
+    if is_first_post_of_day:
+        chat.append({"role": "assistant", "content": "やほー！"})
+
+    print(chat)
     async with channel.typing():
         loop = asyncio.get_event_loop()
         with concurrent.futures.ProcessPoolExecutor() as pool:
             try:
+                # 会話履歴を使用して生成
+                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
                 answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
                 answer = answer.replace("\t", "\n")
                 if not answer:
                     print("Failed to generate an answer.")
                     return
+
+                # その日の最初の投稿の場合は「やほー！」を追加
+                if is_first_post_of_day:
+                    answer = "やほー！\n" + answer
+
             except Exception as e:
                 print(f"Error in generating response: {e}")
                 return
 
-    await channel.send(selected_word + answer)
+    await channel.send(answer)
 
-    # 次回の待機時間を計算（平均12時間、標準偏差4時間とする例）
-    mean_hours = 6  # 平均時間（12時間）
-    std_dev_hours = 3  # 標準偏差（4時間）
+    # 次回の待機時間を計算（平均6時間、標準偏差3時間）
+    mean_hours = 6
+    std_dev_hours = 3
     next_wait_time_seconds = get_next_wait_time(mean_hours * 3600, std_dev_hours * 3600)
 
     print(f"Next daily_yaho will run in {next_wait_time_seconds / 3600:.2f} hours.")
