@@ -16,16 +16,24 @@ import aiohttp
 import random
 from collections import defaultdict
 from transformers import AutoTokenizer
+from openai import OpenAI
 
-# import MeCab
 
-# mecab = MeCab.Tagger("-Ochasen")
+
+
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
+
+
+# モデル切り替え用グローバル変数
+USE_OPENAI_MODEL = True
+OPENAI_MODEL = "ft:gpt-4o-2024-08-06:personal:hamahiyo:BMYosJsB"
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='/', intents=intents)
@@ -36,51 +44,21 @@ def normalize_text(text):
     # 全角と半角を統一
     return unicodedata.normalize('NFKC', text)
 
-system_prompt = "あなたは「ハマヒヨちゃん」というキャラクターです。一人称は「私」または「ヒヨタン」を使い、それ以外使わないで下さい。"
+# モデルごとのシステムプロンプト
+LLAMA_SYSTEM_PROMPT = "あなたは「ハマヒヨちゃん」というキャラクターです。一人称は「私」または「ヒヨタン」を使い、それ以外使わないで下さい。"
+OPENAI_SYSTEM_PROMPT = "あなたは「ハマヒヨちゃん」というキャラクターです。一人称は「ヒヨタン」または「私」に限定し、「ヒヨタン」は一人称としてのみ使用すること。"
+
+# システムプロンプトを取得する関数
+def get_system_prompt():
+    if USE_OPENAI_MODEL:
+        return OPENAI_SYSTEM_PROMPT
+    else:
+        return LLAMA_SYSTEM_PROMPT
+
+system_prompt = get_system_prompt()
 tokenizer = AutoTokenizer.from_pretrained("tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3")
 
-# def generate_message_from_prompt(prompt):
-#     original_prompt = prompt
-#     # 全角の空白は半角に変換
-#     prompt = prompt.replace('　', ' ')
 
-#     # prompt = prompt.replace('\n\n', '[SEP]')  # \n\nは[SEP]に変換
-#     # \nは[NEWLINE]に変換
-#     prompt = prompt.replace('\n', '[NEWLINE]')
-    
-
-#     # gpt-2 を使う generate_messages をインポート
-#     from generate import generate_messages
-    
-#     # メッセージを生成
-#     messages = generate_messages(prompt, max_length=64, num_sentences=1)
-#     message = messages[0]
-#     message_list = message.split('[SEP]')[:2]  # [SEP] 以降の文章を削除
-#     message = '\n'.join(message_list)
-    
-#     print(f'Prompt: {original_prompt}')
-#     print(f'Message: {message}')
-#     i = 0
-#     j = 0
-   
-#     while i < len(original_prompt):
-#         p = original_prompt[i]
-#         m = message[j]
-#         if normalize_text(p.strip()) == normalize_text(m.strip()):
-#             i += 1
-#             j += 1
-#         else:
-#             message = message[:j] + message[j+1:]
-    
-#     prompt = normalize_text(prompt)
-#     message = normalize_text(message)
-#     message = re.sub(re.escape(prompt), f'**{prompt}**', message, count=1, flags=re.UNICODE)
-
-#     # !は「！」に置換
-#     message = message.replace('!', '！')
-#     # ?は「？」に置換
-#     message = message.replace('?', '？')
-#     return message
 
 # -tオプションを抽出するための関数
 def extract_t_option(prompt: str, default_value: float = 1.2):
@@ -123,40 +101,6 @@ def extract_d_option(prompt: str):
 
 
 
-
-
-def extract_phrases(text):
-    """
-    日本語の文章から形態解析を行い、意味のあるフレーズを抽出します。
-    主に名詞句（名詞+助詞+名詞、形容詞+名詞など）を対象とします。
-    """
-    phrases = []
-    node = mecab.parseToNode(text)
-    current_phrase = []  # フレーズを一時的に保持するリスト
-
-    while node:
-        word = node.surface  # 単語の表層形
-        feature = node.feature.split(",")  # 品詞情報
-
-        # 名詞、形容詞だが、かつ「ん」や非自立の名詞は除外する
-        if feature[0] in ["名詞", "形容詞"] and word != "ん" and feature[1] != "非自立":
-            current_phrase.append(word)
-        elif feature[0] == "助詞" and current_phrase:  # 助詞が続いたらフレーズを保持
-            current_phrase.append(word)
-        else:
-            # 現在のフレーズを phrases に保存してリセット
-            if current_phrase:
-                phrases.append("".join(current_phrase))
-                current_phrase = []
-        
-        node = node.next
-
-    # 最後のフレーズを保存
-    if current_phrase:
-        phrases.append("".join(current_phrase))
-
-    return phrases
-
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
@@ -170,7 +114,7 @@ async def on_ready():
         await voice_channel.connect()
         print("Bot reconnected to the voice channel.")
     
-    asyncio.create_task(run_daily_message())
+    # asyncio.create_task(run_daily_message())
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -206,6 +150,30 @@ async def on_message(message: discord.Message):
 
 import concurrent.futures
 
+# OpenAI APIを使用した応答生成
+async def generate_openai_response(prompt=None, temperature=1.2, conversation=None):
+    
+    try:
+        # 会話履歴がある場合はそれを使用し、ない場合は単一のプロンプトを使用
+        if conversation:
+            messages = [{"role": "system", "content": get_system_prompt()}] + conversation
+        else:
+            messages = [
+                {"role": "system", "content": get_system_prompt()},
+                {"role": "user", "content": prompt}
+            ]
+        
+        print(messages)
+        response = openai_client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=messages,
+            temperature=temperature
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenAI API error: {e}")
+        return "エラーが発生しました。もう一度試してください。"
+
 async def handle_generating_and_converting(message: discord.Message):
     if message.author == bot.user:
         return
@@ -213,8 +181,6 @@ async def handle_generating_and_converting(message: discord.Message):
     is_mention = bot.user.mentioned_in(message)
     is_reply = message.reference is not None and message.reference.resolved.author == bot.user
 
- 
-    
     # Botがメンションされたかどうか確認
     if is_mention or is_reply:
         async with message.channel.typing():
@@ -228,22 +194,17 @@ async def handle_generating_and_converting(message: discord.Message):
                     question = reply_message.content
                     message = reply_message
                     
-
-
             is_debug, question = extract_d_option(question)  # -dオプションを抽出
             temperature, question = extract_t_option(question)  # -tオプションを抽出
 
-
+            conversation = None
+            
             if is_reply:
-                chat = [{"role": "system", "content": system_prompt}]
-
+                chat = [{"role": "system", "content": get_system_prompt()}]
                 conversation = [{"role": "user", "content": question}]
                 current_message = message
                 
-                # prompt = f"Q: {question}\nA: "
-                # prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
                 while current_message.reference is not None:
-                    
                     previous_message = await current_message.channel.fetch_message(current_message.reference.message_id)
                     previous_answer = previous_message.content
 
@@ -256,52 +217,31 @@ async def handle_generating_and_converting(message: discord.Message):
                         conversation = [{"role": "user", "content": previous_question}] + conversation
 
                         current_message = more_previous_message
-                    
-                    
 
                     prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
 
                     if len(prompt) > 500:
                         break
-                
 
                     if previous_message.reference is None:
                         break
-                
-                
-                
-
             else:
-
-                chat = [{"role": "system", "content": system_prompt}, {"role": "user", "content": question}]
-                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
-
-
-            # print(prompt)
-            
-            
-            # print(answer)
-
-        
+                conversation = [{"role": "user", "content": question}]
+                chat = [{"role": "system", "content": get_system_prompt()}]
+                prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
 
             if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-                
-                
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
-                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
-                    
-                    # print(answer)
-
+                    if USE_OPENAI_MODEL:
+                        answer = await generate_openai_response(conversation=conversation, temperature=temperature)
+                    else:
+                        answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
 
                     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
-
-                    # print(audio_content)
             
-                
                     audio_file_path = f"output_{message.id}.wav"
                     
-
                     # 音声ファイルを保存
                     with open(audio_file_path, 'wb') as f:
                         f.write(audio_content)
@@ -311,23 +251,21 @@ async def handle_generating_and_converting(message: discord.Message):
                     source = discord.FFmpegPCMAudio(audio_file_path)
                     vc.play(source)
                 
-
                     while vc.is_playing():
                         print('playing')
                         # 現在の再生時間を計算
                         await asyncio.sleep(1)  # 1秒ごとにチェック
                 
-                    
-
                     os.remove(audio_file_path)  # 一時ファイルを削除
                     await message.reply(answer)
             else:
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
-                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t"])
+                    if USE_OPENAI_MODEL:
+                        answer = await generate_openai_response(conversation=conversation, temperature=temperature)
+                    else:
+                        answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t"])
                     await message.reply(answer)
-            # メッセージにリプライ
-            
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
@@ -378,21 +316,23 @@ async def generate(interaction: discord.Interaction, prompt: str):
 
     temperature, clean_prompt = extract_t_option(prompt)  # -tオプションを抽出
 
-    chat = [{"role": "system", "content": system_prompt}]
-    template_applied_prompt = tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize=True) + tokenizer.encode(clean_prompt, add_special_tokens=False)
-
     try:
-        while True:
-            completion = n_messages_completion(template_applied_prompt, num=2, temperature=temperature).replace("\t", "\n")
-            if not contains_bad_words(completion):
-                message = f"**{clean_prompt}**" + completion
-                break
+        if USE_OPENAI_MODEL:
+            message = f"**{clean_prompt}**" + await generate_openai_response(clean_prompt, temperature)
+        else:
+            chat = [{"role": "system", "content": get_system_prompt()}]
+            template_applied_prompt = tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize=True) + tokenizer.encode(clean_prompt, add_special_tokens=False)
+
+            while True:
+                completion = n_messages_completion(template_applied_prompt, num=2, temperature=temperature).replace("\t", "\n")
+                if not contains_bad_words(completion):
+                    message = f"**{clean_prompt}**" + completion
+                    break
         await interaction.followup.send(message)  # 非同期にフォローアップメッセージを送信
     except Exception as e:
         # エラーハンドリング
         await interaction.followup.send(f'An error occurred: {str(e)}')
 
-    
     if interaction.guild.voice_client:
         vc = interaction.guild.voice_client
 
@@ -405,8 +345,6 @@ async def generate(interaction: discord.Interaction, prompt: str):
             with open(audio_file_path, 'wb') as f:
                 f.write(audio_content)
 
-            
-
             source = discord.FFmpegPCMAudio(audio_file_path)
             vc.play(source)
 
@@ -418,7 +356,7 @@ async def generate(interaction: discord.Interaction, prompt: str):
             print('done')
 
     else:
-        await interaction.response.send_message("ボイスチャンネルにいないと読めないよ！")
+        await interaction.followup.send("ボイスチャンネルにいないと読めないよ！")
         return
     
 # @bot.tree.command(name='readmulti', description='ランダムに複数のブログを読み上げます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
@@ -702,6 +640,24 @@ async def leave_voice(interaction: discord.Interaction):
         await interaction.response.send_message("ボイスチャンネルに接続していないよ！")
 
 
+# モデル切り替えコマンド
+@bot.tree.command(name='switch_model', description='使用するモデルを切り替えます', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def switch_model(interaction: discord.Interaction):
+    global USE_OPENAI_MODEL
+    USE_OPENAI_MODEL = not USE_OPENAI_MODEL
+    
+    model_name = "OpenAI API (ファインチューニング版)" if USE_OPENAI_MODEL else "Llama-3.1-Swallow"
+    system_prompt = get_system_prompt()
+    await interaction.response.send_message(f"モデルを「{model_name}」に切り替えました！")
+
+# 現在のモデルを確認するコマンド
+@bot.tree.command(name='current_model', description='現在使用しているモデルを表示します', guild=discord.Object(id=int(os.getenv('GUILD_ID'))))
+async def current_model(interaction: discord.Interaction):
+    model_name = "OpenAI API (ファインチューニング版)" if USE_OPENAI_MODEL else "Llama-3.1-Swallow"
+    await interaction.response.send_message(f"現在のモデルは「{model_name}」です！")
+
+
+
 def get_next_wait_time(mean: float, std_dev: float) -> float:
     """
     次の投稿までの時間を正規分布に基づいてサンプリング。
@@ -759,7 +715,7 @@ async def run_daily_message():
     TOKEN_LIMIT = 350
 
     # システムプロンプトのトークン数を計算
-    system_tokens = len(tokenizer.encode(system_prompt))
+    system_tokens = len(tokenizer.encode(get_system_prompt()))
     total_tokens += system_tokens
 
     # 新しい順に処理（messagesは新しい順に並んでいる）
@@ -782,7 +738,7 @@ async def run_daily_message():
     print(f"Total tokens used: {total_tokens}")
 
     # システムプロンプトを追加
-    chat = [{"role": "system", "content": system_prompt}] + conversation
+    chat = [{"role": "system", "content": get_system_prompt()}] + conversation
 
     # その日の最初の投稿の場合は「やほー！」を追加
     if is_first_post_of_day:
@@ -794,15 +750,27 @@ async def run_daily_message():
         with concurrent.futures.ProcessPoolExecutor() as pool:
             try:
                 # 会話履歴を使用して生成
-                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
-                answer = answer.replace("\t", "\n")
+                if USE_OPENAI_MODEL:
+                    # OpenAI用にチャット履歴を整形
+                    
+                    
+                    response = openai_client.chat.completions.create(
+                        model=OPENAI_MODEL,
+                        messages=chat,
+                        temperature=1.2
+                    )
+                    answer = response.choices[0].message.content
+                else:
+                    prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
+                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
+                    answer = answer.replace("\t", "\n")
+                
                 if not answer:
                     print("Failed to generate an answer.")
                     return
 
                 # その日の最初の投稿の場合は「やほー！」を追加
-                if is_first_post_of_day:
+                if is_first_post_of_day and "やほー" not in answer:
                     answer = "やほー！\n" + answer
 
             except Exception as e:
@@ -830,4 +798,5 @@ if __name__ == '__main__':
     
     asyncio.run(main())
     
+
 
