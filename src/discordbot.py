@@ -114,7 +114,7 @@ async def on_ready():
         await voice_channel.connect()
         print("Bot reconnected to the voice channel.")
     
-    # asyncio.create_task(run_daily_message())
+    asyncio.create_task(run_daily_message())
 
 @bot.event
 async def on_voice_state_update(member, before, after):
