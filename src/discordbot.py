@@ -750,20 +750,20 @@ async def run_daily_message():
         with concurrent.futures.ProcessPoolExecutor() as pool:
             try:
                 # 会話履歴を使用して生成
-                if USE_OPENAI_MODEL:
-                    # OpenAI用にチャット履歴を整形
+                # if USE_OPENAI_MODEL:
+                #     # OpenAI用にチャット履歴を整形
                     
                     
-                    response = openai_client.chat.completions.create(
-                        model=OPENAI_MODEL,
-                        messages=chat,
-                        temperature=1.2
-                    )
-                    answer = response.choices[0].message.content
-                else:
-                    prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
-                    answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
-                    answer = answer.replace("\t", "\n")
+                #     response = openai_client.chat.completions.create(
+                #         model=OPENAI_MODEL,
+                #         messages=chat,
+                #         temperature=1.2
+                #     )
+                #     answer = response.choices[0].message.content
+                # else:
+                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
+                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
+                answer = answer.replace("\t", "\n")
                 
                 if not answer:
                     print("Failed to generate an answer.")
