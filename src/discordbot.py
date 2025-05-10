@@ -61,7 +61,7 @@ tokenizer = AutoTokenizer.from_pretrained("tokyotech-llm/Llama-3.1-Swallow-8B-In
 
 
 # -tオプションを抽出するための関数
-def extract_t_option(prompt: str, default_value: float = 1.2):
+def extract_t_option(prompt: str, default_value: float = 1.1):
     """
     プロンプトから -t <value> オプションを抽出し、オプションの数値とクリーンなプロンプトを返す。
 
