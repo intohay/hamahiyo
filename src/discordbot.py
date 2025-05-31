@@ -23,7 +23,7 @@ from openai import OpenAI
 
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-
+runpod_client = OpenAI(base_url="https://api.runpod.ai/v2/a24s38kbwrbmgt/openai/v1", api_key=os.getenv("RUNPOD_API_KEY"))
 
 load_dotenv()
 
@@ -151,7 +151,7 @@ async def on_message(message: discord.Message):
 import concurrent.futures
 
 # OpenAI APIを使用した応答生成
-async def generate_openai_response(prompt=None, temperature=1.2, conversation=None):
+async def generate_openai_response(prompt=None, temperature=0.8, conversation=None):
     
     try:
         # 会話履歴がある場合はそれを使用し、ない場合は単一のプロンプトを使用
@@ -172,6 +172,29 @@ async def generate_openai_response(prompt=None, temperature=1.2, conversation=No
         return response.choices[0].message.content
     except Exception as e:
         print(f"OpenAI API error: {e}")
+        return "エラーが発生しました。もう一度試してください。"
+
+async def generate_runpod_response(prompt=None, temperature=0.8, conversation=None):
+    try:
+        if conversation:
+            messages = [{"role": "system", "content": get_system_prompt()}] + conversation
+        else:
+            messages = [
+                {"role": "system", "content": get_system_prompt()},
+                {"role": "user", "content": prompt}
+            ]
+        
+        print(messages)
+        response = runpod_client.chat.completions.create(
+            model="intohay/llama3.1-swallow-hamahiyo",
+            messages=messages,
+            temperature=temperature,
+        )
+        
+        print(response)
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"RunPod API error: {e}")
         return "エラーが発生しました。もう一度試してください。"
 
 async def handle_generating_and_converting(message: discord.Message):
@@ -220,7 +243,7 @@ async def handle_generating_and_converting(message: discord.Message):
 
                     prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
 
-                    if len(prompt) > 500:
+                    if len(prompt) > 250:
                         break
 
                     if previous_message.reference is None:
@@ -230,42 +253,52 @@ async def handle_generating_and_converting(message: discord.Message):
                 chat = [{"role": "system", "content": get_system_prompt()}]
                 prompt = tokenizer.apply_chat_template(chat + conversation, tokenize=True, add_generation_prompt=True)
 
-            if message.guild.voice_client and message.author.voice and message.author.voice.channel:
-                loop = asyncio.get_event_loop()
-                with concurrent.futures.ProcessPoolExecutor() as pool:
-                    if USE_OPENAI_MODEL:
-                        answer = await generate_openai_response(conversation=conversation, temperature=temperature)
-                    else:
-                        answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
+            # if message.guild.voice_client and message.author.voice and message.author.voice.channel:
+                # loop = asyncio.get_event_loop()
+                # with concurrent.futures.ProcessPoolExecutor() as pool:
+                #     if USE_OPENAI_MODEL:
+                #         answer = await generate_openai_response(conversation=conversation, temperature=temperature)
+                #     else:
+                #         answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\n", "\t"])
 
-                    audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
+                #     audio_content = await loop.run_in_executor(pool, text_to_speech, answer)
             
-                    audio_file_path = f"output_{message.id}.wav"
+                #     audio_file_path = f"output_{message.id}.wav"
                     
-                    # 音声ファイルを保存
-                    with open(audio_file_path, 'wb') as f:
-                        f.write(audio_content)
+                #     # 音声ファイルを保存
+                #     with open(audio_file_path, 'wb') as f:
+                #         f.write(audio_content)
 
-                    # 音声をボイスチャンネルで再生
-                    vc = message.guild.voice_client
-                    source = discord.FFmpegPCMAudio(audio_file_path)
-                    vc.play(source)
+                #     # 音声をボイスチャンネルで再生
+                #     vc = message.guild.voice_client
+                #     source = discord.FFmpegPCMAudio(audio_file_path)
+                #     vc.play(source)
                 
-                    while vc.is_playing():
-                        print('playing')
-                        # 現在の再生時間を計算
-                        await asyncio.sleep(1)  # 1秒ごとにチェック
+                #     while vc.is_playing():
+                #         print('playing')
+                #         # 現在の再生時間を計算
+                #         await asyncio.sleep(1)  # 1秒ごとにチェック
                 
-                    os.remove(audio_file_path)  # 一時ファイルを削除
-                    await message.reply(answer)
+                #     os.remove(audio_file_path)  # 一時ファイルを削除
+                #     await message.reply(answer)
+            # else:
+                # loop = asyncio.get_event_loop()
+                # with concurrent.futures.ProcessPoolExecutor() as pool:
+                #     if USE_OPENAI_MODEL:
+                #         answer = await generate_openai_response(conversation=conversation, temperature=temperature)
+                #     else:
+                #         answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t"])
+                #     await message.reply(answer)
+            
+            if USE_OPENAI_MODEL:
+                answer = await generate_openai_response(conversation=conversation, temperature=temperature)
             else:
-                loop = asyncio.get_event_loop()
-                with concurrent.futures.ProcessPoolExecutor() as pool:
-                    if USE_OPENAI_MODEL:
-                        answer = await generate_openai_response(conversation=conversation, temperature=temperature)
-                    else:
-                        answer = await loop.run_in_executor(pool, retry_completion, prompt, 1, temperature, 3, ["\t"])
-                    await message.reply(answer)
+                answer = await generate_runpod_response(conversation=conversation, temperature=temperature)
+                answer = answer.replace("\t", "\n")
+                answer = answer.split("\n")
+                answer = answer[0]
+                
+            await message.reply(answer)
 
 @bot.tree.command(name='yaho', description='やほー！から始まる文章を返します')
 async def yaho(interaction: discord.Interaction):
@@ -761,9 +794,14 @@ async def run_daily_message():
                 #     )
                 #     answer = response.choices[0].message.content
                 # else:
-                prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
-                answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
+                
+                # prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
+                # answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
+                # answer = answer.replace("\t", "\n")
+                
+                answer = await generate_runpod_response(conversation=chat, temperature=0.8)
                 answer = answer.replace("\t", "\n")
+                
                 
                 if not answer:
                     print("Failed to generate an answer.")
