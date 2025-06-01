@@ -11,3 +11,4 @@ bad_words.yaml
 *.wav
 *.mp3
 .DS_Store
+*.csv

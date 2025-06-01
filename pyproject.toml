@@ -1,45 +1,17 @@
-[tool.poetry]
+[project]
 name = "hamahiyo"
 version = "0.1.0"
-description = ""
-authors = ["tada"]
+description = "Add your description here"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.12"
-transformers = "^4.39.2"
-sentencepiece = "^0.2.0"
-pandas = "^2.2.1"
-torch = "^2.2.2"
-accelerate = "0.29.0"
-setuptools = "^69.2.0"
-protobuf = "^5.27.2"
-flask = "^3.0.3"
-flask-cors = "^4.0.1"
-redis = "^5.0.7"
-rq = "^1.16.2"
-python-dotenv = "^1.0.1"
-flask-sqlalchemy = "^3.1.1"
-apscheduler = "^3.10.4"
-flask-migrate = "^4.0.7"
-jaconv = "^0.4.0"
-langchain = "^0.3.1"
-langchain-community = "^0.3.1"
-langchain-chroma = "^0.1.4"
-langchain-openai = "^0.2.0"
-bs4 = "^0.0.2"
-matplotlib = "^3.9.2"
-scikit-learn = "^1.5.2"
-statsmodels = "^0.14.4"
-pynac = "^0.9.7"
-discord-py = {extras = ["voice"], version = "^2.4.0"}
-pynacl = "^1.5.0"
-pydub = "^0.25.1"
-
-
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.4"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.12.6",
+    "bs4>=0.0.2",
+    "discord-py[voice]>=2.5.2",
+    "jaconv>=0.4.0",
+    "jinja2>=3.1.6",
+    "openai>=1.82.1",
+    "python-dotenv>=1.1.0",
+    "requests>=2.32.3",
+    "transformers>=4.52.4",
+]
