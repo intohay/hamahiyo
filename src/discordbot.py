@@ -375,12 +375,12 @@ async def yaho(interaction: discord.Interaction):
 
         loop = asyncio.get_event_loop()
         with concurrent.futures.ProcessPoolExecutor() as pool:
-            audio_content = await loop.run_in_executor(pool, text_to_speech, message)
-
             audio_file_path = f"output_{interaction.id}.wav"
-
-            with open(audio_file_path, "wb") as f:
-                f.write(audio_content)
+            try:
+                await loop.run_in_executor(pool, text_to_speech, message, audio_file_path)
+            except Exception as e:
+                await interaction.followup.send(f"An error occurred: {str(e)}")
+                return
 
             source = discord.FFmpegPCMAudio(audio_file_path)
             vc.play(source)
@@ -508,12 +508,9 @@ async def echo(interaction: discord.Interaction, text: str):
     loop = asyncio.get_event_loop()
 
     with concurrent.futures.ProcessPoolExecutor() as pool:
-        audio_content = await loop.run_in_executor(pool, text_to_speech, text)
-
         audio_file_path = f"output_{interaction.id}.wav"
-
-        with open(audio_file_path, "wb") as f:
-            f.write(audio_content)
+        
+        await loop.run_in_executor(pool, text_to_speech, text, audio_file_path)
 
         if interaction.guild.voice_client:
             vc = interaction.guild.voice_client
