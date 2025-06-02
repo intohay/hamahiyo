@@ -327,7 +327,7 @@ async def handle_generating_and_converting(message: discord.Message):
                     conversation=conversation, temperature=temperature
                 )
 
-            # ボイスチャンネルにいる場合は音声生成を開始
+            # ボイスチャンネルにいる場合は音声生成を試行
             if (
                 message.guild.voice_client
                 and message.author.voice
@@ -340,23 +340,24 @@ async def handle_generating_and_converting(message: discord.Message):
                         await loop.run_in_executor(
                             pool, text_to_speech, answer, audio_file_path
                         )
+                        
+                        # メッセージを送信してから音声を再生
+                        await message.reply(answer)
+                        
+                        # 音声をボイスチャンネルで再生
+                        vc = message.guild.voice_client
+                        source = discord.FFmpegPCMAudio(audio_file_path)
+                        vc.play(source)
+
+                        while vc.is_playing():
+                            print("playing")
+                            await asyncio.sleep(1)
+
+                        os.remove(audio_file_path)  # 一時ファイルを削除
                     except Exception as e:
-                        await message.channel.send(f"An error occurred: {str(e)}")
-                        return
-
-                    # メッセージを送信してから音声を再生
-                    await message.reply(answer)
-                    
-                    # 音声をボイスチャンネルで再生
-                    vc = message.guild.voice_client
-                    source = discord.FFmpegPCMAudio(audio_file_path)
-                    vc.play(source)
-
-                    while vc.is_playing():
-                        print("playing")
-                        await asyncio.sleep(1)
-
-                    os.remove(audio_file_path)  # 一時ファイルを削除
+                        # 音声生成に失敗してもメッセージは送信
+                        await message.reply(answer)
+                        await message.channel.send(f"音声生成エラー: {str(e)}")
             else:
                 await message.reply(answer)
 
