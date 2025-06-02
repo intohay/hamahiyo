@@ -327,15 +327,12 @@ async def handle_generating_and_converting(message: discord.Message):
                     conversation=conversation, temperature=temperature
                 )
 
-            await message.reply(answer)
-
-            # ボイスチャンネルにいる場合
+            # ボイスチャンネルにいる場合は音声生成を開始
             if (
                 message.guild.voice_client
                 and message.author.voice
                 and message.author.voice.channel
             ):
-                
                 loop = asyncio.get_event_loop()
                 with concurrent.futures.ProcessPoolExecutor() as pool:
                     audio_file_path = f"output_{message.id}.wav"
@@ -347,6 +344,9 @@ async def handle_generating_and_converting(message: discord.Message):
                         await message.channel.send(f"An error occurred: {str(e)}")
                         return
 
+                    # メッセージを送信してから音声を再生
+                    await message.reply(answer)
+                    
                     # 音声をボイスチャンネルで再生
                     vc = message.guild.voice_client
                     source = discord.FFmpegPCMAudio(audio_file_path)
@@ -354,10 +354,11 @@ async def handle_generating_and_converting(message: discord.Message):
 
                     while vc.is_playing():
                         print("playing")
-                        # 現在の再生時間を計算
-                        await asyncio.sleep(1)  # 1秒ごとにチェック
+                        await asyncio.sleep(1)
 
                     os.remove(audio_file_path)  # 一時ファイルを削除
+            else:
+                await message.reply(answer)
 
 
 @bot.tree.command(name="yaho", description="やほー！から始まる文章を返します")
