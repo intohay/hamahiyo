@@ -1,14 +1,15 @@
 import asyncio
+import base64
 import concurrent.futures
+import json
 import os
 import random
 import re
 from datetime import datetime, timedelta, timezone
-import json
+
 import aiohttp
-import requests
 import discord
-import base64
+import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -23,15 +24,11 @@ RUNPOD_LLAMA_URL = os.getenv("RUNPOD_LLAMA_URL")
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
 
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-runpod_client = OpenAI(
-    base_url=RUNPOD_LLAMA_URL, api_key=RUNPOD_API_KEY
-)
-
+runpod_client = OpenAI(base_url=RUNPOD_LLAMA_URL, api_key=RUNPOD_API_KEY)
 
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-
 
 
 # モデル切り替え用グローバル変数
@@ -108,6 +105,7 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
                 model="intohay/llama3.1-swallow-hamahiyo",
                 messages=messages,
                 temperature=temperature,
+                extra_body={"repeat_penalty": 1.2}
             )
             content = response.choices[0].message.content
             if not contains_bad_words(content):
@@ -132,13 +130,14 @@ def fetch_audio_from_api(text):
             "text": text,
         }
     }
-    
+
     response = requests.post(RUNPOD_VITS_URL, headers=headers, data=json.dumps(data))
-   
+
     if response.status_code == 200:
         return response.json()["output"]["voice"]
     else:
         raise Exception(f"API call failed with status code {response.status_code}")
+
 
 def save_audio_file(base64_data, file_path):
     audio_data = base64.b64decode(base64_data)
@@ -149,9 +148,8 @@ def save_audio_file(base64_data, file_path):
 def text_to_speech(text: str, file_path: str):
     base64_audio = fetch_audio_from_api(text)
     save_audio_file(base64_audio, file_path)
-    
-    
-    
+
+
 # -tオプションを抽出するための関数
 def extract_t_option(prompt: str, default_value: float = 1.1):
     """
@@ -340,10 +338,10 @@ async def handle_generating_and_converting(message: discord.Message):
                         await loop.run_in_executor(
                             pool, text_to_speech, answer, audio_file_path
                         )
-                        
+
                         # メッセージを送信してから音声を再生
                         await message.reply(answer)
-                        
+
                         # 音声をボイスチャンネルで再生
                         vc = message.guild.voice_client
                         source = discord.FFmpegPCMAudio(audio_file_path)
@@ -379,7 +377,9 @@ async def yaho(interaction: discord.Interaction):
         with concurrent.futures.ProcessPoolExecutor() as pool:
             audio_file_path = f"output_{interaction.id}.wav"
             try:
-                await loop.run_in_executor(pool, text_to_speech, message, audio_file_path)
+                await loop.run_in_executor(
+                    pool, text_to_speech, message, audio_file_path
+                )
             except Exception as e:
                 await interaction.followup.send(f"An error occurred: {str(e)}")
                 return
@@ -408,7 +408,7 @@ async def yaho(interaction: discord.Interaction):
 #     temperature, clean_prompt = extract_t_option(prompt)  # -tオプションを抽出
 
 #     try:
-        
+
 #             chat = [{"role": "system", "content": get_system_prompt()}]
 #             template_applied_prompt = tokenizer.apply_chat_template(
 #                 chat, add_generation_prompt=True, tokenize=True
@@ -511,7 +511,7 @@ async def echo(interaction: discord.Interaction, text: str):
 
     with concurrent.futures.ProcessPoolExecutor() as pool:
         audio_file_path = f"output_{interaction.id}.wav"
-        
+
         await loop.run_in_executor(pool, text_to_speech, text, audio_file_path)
 
         if interaction.guild.voice_client:
