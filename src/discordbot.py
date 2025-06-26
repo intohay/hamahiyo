@@ -860,7 +860,7 @@ async def run_daily_message():
                 # answer = answer.replace("\t", "\n")
 
                 answer = await generate_runpod_response(
-                    conversation=chat, temperature=0.8
+                    conversation=chat, temperature=1.0
                 )
                 answer = answer.replace("\t", "\n")
 
