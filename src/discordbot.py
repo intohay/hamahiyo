@@ -16,6 +16,7 @@ from openai import OpenAI
 from transformers import AutoTokenizer
 
 from utilities import contains_bad_words
+from message_timing_model import MessageTimingModel
 
 load_dotenv()
 
@@ -34,6 +35,12 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 # モデル切り替え用グローバル変数
 USE_OPENAI_MODEL = True
 OPENAI_MODEL = "ft:gpt-4o-2024-08-06:personal:hamahiyo:BMYosJsB"
+
+# daily messageタスクの管理用グローバル変数
+daily_message_task = None
+
+# メッセージタイミングモデル
+timing_model = None
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -105,7 +112,7 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
                 model="intohay/llama3.1-swallow-hamahiyo",
                 messages=messages,
                 temperature=temperature,
-                extra_body={"repeat_penalty": 1.2}
+                extra_body={"repeat_penalty": 1.2},
             )
             content = response.choices[0].message.content
             if not contains_bad_words(content):
@@ -195,6 +202,8 @@ def extract_d_option(prompt: str):
 
 @bot.event
 async def on_ready():
+    global daily_message_task, timing_model
+
     print(f"Logged in as {bot.user.name}")
     await bot.tree.sync(guild=discord.Object(id=int(os.getenv("GUILD_ID"))))
     print(f"{bot.user.name} is connected to the following guilds:")
@@ -206,7 +215,21 @@ async def on_ready():
         await voice_channel.connect()
         print("Bot reconnected to the voice channel.")
 
-    asyncio.create_task(run_daily_message())
+    # メッセージタイミングモデルを初期化
+    try:
+        timing_model = MessageTimingModel()
+        timing_model.print_model_info()
+        print("Message timing model loaded successfully.")
+    except Exception as e:
+        print(f"Failed to load timing model: {e}")
+        timing_model = None
+
+    # daily messageタスクが既に実行中でないかチェック
+    if daily_message_task is None or daily_message_task.done():
+        daily_message_task = asyncio.create_task(run_daily_message())
+        print("Daily message task started.")
+    else:
+        print("Daily message task is already running.")
 
 
 @bot.event
@@ -764,129 +787,208 @@ def get_next_wait_time(mean: float, std_dev: float) -> float:
 
 async def run_daily_message():
     """
-    メッセージ履歴を文脈として使用し、その続きとしてメッセージを生成する。
-    トークン数の制限（350トークン）を考慮して履歴を制限する。
-    その日の最初の投稿の場合は「やほー！」を文脈の一部として含めて生成し、実際の投稿にも含める。
-    新しいメッセージを優先的に保持し、古いメッセージは必要に応じて捨てる。
+    リアルなメッセージ送信パターンを実装した改良版。
+    分析結果に基づいて時間帯と投稿間隔を調整し、本家に近い投稿スケジュールを再現する。
     """
+    global timing_model
+
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
         print(f"Channel with ID {CHANNEL_ID} not found.")
         return
 
-    # メッセージ履歴を取得（最大20件まで取得）
-    messages = []
-    async for message in channel.history(limit=20):
-        messages.append(message)
+    # フォールバック用の基本設定
+    if timing_model is None:
+        print("Timing model not available, using fallback settings.")
+        timing_model = None
 
-    if not messages:
-        print("No messages found to generate a prompt.")
-        return
+    # 最後の投稿時刻を記録
+    last_post_time = None
+    burst_mode = False
+    burst_intervals = []
 
-    # 今日の日付を取得（JST）
-    jst = timezone(timedelta(hours=9))
-    today = datetime.now(jst).date()
-    print(f"Today (JST): {today}")
+    while True:
+        try:
+            # メッセージ履歴を取得（最大20件まで取得）
+            messages = []
+            async for message in channel.history(limit=20):
+                messages.append(message)
 
-    # 最後の投稿が今日かどうかを確認
-    is_first_post_of_day = True
-    for message in messages:
-        if message.author == bot.user:
-            # メッセージの時刻をJSTに変換
-            message_date = message.created_at.astimezone(jst).date()
-            print(
-                f"Message date: {message_date}, Message time: {message.created_at.astimezone(jst)}"
-            )
-            if message_date == today:
-                is_first_post_of_day = False
-                break
+            # 現在時刻（JST）
+            jst = timezone(timedelta(hours=9))
+            current_time = datetime.now(jst)
+            current_hour = current_time.hour
+            today = current_time.date()
 
-    print(f"Is first post of day: {is_first_post_of_day}")
+            # 最後のbot投稿時刻を取得
+            for message in messages:
+                if message.author == bot.user:
+                    last_post_time = message.created_at.astimezone(jst)
+                    break
 
-    # メッセージ履歴を会話形式に変換し、トークン数に基づいて制限
-    conversation = []
-    total_tokens = 0
-    TOKEN_LIMIT = 350
+            if last_post_time is None:
+                last_post_time = current_time - timedelta(hours=8)  # デフォルト値
 
-    # システムプロンプトのトークン数を計算
-    system_tokens = len(tokenizer.encode(get_system_prompt()))
-    total_tokens += system_tokens
-
-    # 新しい順に処理（messagesは新しい順に並んでいる）
-    for message in messages:
-        # メッセージのトークン数を計算
-        message_tokens = len(tokenizer.encode(message.content))
-
-        # トークン制限を超える場合は処理を終了
-        if total_tokens + message_tokens > TOKEN_LIMIT:
-            break
-
-        # 会話履歴に追加（新しい順に追加）
-        if message.author == bot.user:
-            conversation.insert(0, {"role": "assistant", "content": message.content})
-        else:
-            conversation.insert(0, {"role": "user", "content": message.content})
-
-        total_tokens += message_tokens
-
-    print(f"Total tokens used: {total_tokens}")
-
-    # システムプロンプトを追加
-    chat = [{"role": "system", "content": get_system_prompt()}] + conversation
-
-    # その日の最初の投稿の場合は「やほー！」を追加
-    if is_first_post_of_day:
-        chat.append({"role": "assistant", "content": "やほー！"})
-
-    print(chat)
-    async with channel.typing():
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ProcessPoolExecutor() as pool:
-            try:
-                # 会話履歴を使用して生成
-                # if USE_OPENAI_MODEL:
-                #     # OpenAI用にチャット履歴を整形
-
-                #     response = openai_client.chat.completions.create(
-                #         model=OPENAI_MODEL,
-                #         messages=chat,
-                #         temperature=1.2
-                #     )
-                #     answer = response.choices[0].message.content
-                # else:
-
-                # prompt = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True)
-                # answer = await loop.run_in_executor(pool, retry_completion, prompt, 2, 1.2, 3, ["\t", "\n"])
-                # answer = answer.replace("\t", "\n")
-
-                answer = await generate_runpod_response(
-                    conversation=chat, temperature=1.0
+            # 深夜早朝は投稿を避ける（6時-23時のみ活動）
+            if current_hour < 6 or current_hour > 23:
+                sleep_until = current_time.replace(
+                    hour=7, minute=0, second=0, microsecond=0
                 )
-                answer = answer.replace("\t", "\n")
+                if current_hour > 23:
+                    sleep_until += timedelta(days=1)
 
-                if not answer:
-                    print("Failed to generate an answer.")
-                    return
+                sleep_seconds = (sleep_until - current_time).total_seconds()
+                print(
+                    f"Sleeping until {sleep_until} ({sleep_seconds / 3600:.1f} hours)"
+                )
+                await asyncio.sleep(sleep_seconds)
+                continue
 
-                # その日の最初の投稿の場合は「やほー！」を追加
-                if is_first_post_of_day and "やほー" not in answer:
-                    answer = "やほー！\n" + answer
+            # バーストモード（連続投稿）の処理
+            if burst_mode and burst_intervals:
+                wait_minutes = burst_intervals.pop(0)
+                print(f"Burst mode: waiting {wait_minutes:.1f} minutes for next post")
+                await asyncio.sleep(wait_minutes * 60)
 
-            except Exception as e:
-                print(f"Error in generating response: {e}")
-                return
+                if not burst_intervals:
+                    burst_mode = False
+                    print("Burst mode ended")
+            else:
+                # 通常の投稿間隔計算
+                if timing_model:
+                    # バーストモードの判定
+                    if timing_model.is_burst_mode_time(current_time):
+                        burst_mode = True
+                        burst_intervals = timing_model.get_burst_intervals()
+                        print(
+                            f"Burst mode activated: {len(burst_intervals) + 1} posts planned"
+                        )
+                        wait_minutes = burst_intervals.pop(0) if burst_intervals else 1
+                        await asyncio.sleep(wait_minutes * 60)
+                    else:
+                        # 現在時刻に投稿すべきかチェック
+                        if not timing_model.should_post_at_hour(current_hour):
+                            # 次の投稿時刻まで待機
+                            next_post_time = timing_model.get_next_post_time(
+                                last_post_time
+                            )
+                            wait_seconds = (
+                                next_post_time - current_time
+                            ).total_seconds()
 
-    await channel.send(answer)
+                            if wait_seconds > 0:
+                                print(
+                                    f"Waiting until {next_post_time} ({wait_seconds / 3600:.1f} hours)"
+                                )
+                                await asyncio.sleep(
+                                    min(wait_seconds, 3600)
+                                )  # 最大1時間待機
+                                continue
+                else:
+                    # フォールバック: シンプルな間隔
+                    hours_since_last = (
+                        current_time - last_post_time
+                    ).total_seconds() / 3600
+                    if hours_since_last < 2:  # 最低2時間間隔
+                        await asyncio.sleep(1800)  # 30分待機
+                        continue
 
-    # 次回の待機時間を計算（平均6時間、標準偏差3時間）
-    mean_hours = 6
-    std_dev_hours = 3
-    next_wait_time_seconds = get_next_wait_time(mean_hours * 3600, std_dev_hours * 3600)
+            # 今日初回投稿かチェック
+            is_first_post_of_day = True
+            for message in messages:
+                if message.author == bot.user:
+                    message_date = message.created_at.astimezone(jst).date()
+                    if message_date == today:
+                        is_first_post_of_day = False
+                        break
 
-    print(f"Next daily_yaho will run in {next_wait_time_seconds / 3600:.2f} hours.")
-    # 次回の投稿をスケジュール
-    await asyncio.sleep(next_wait_time_seconds)
-    await run_daily_message()
+            print(
+                f"Generating message at {current_time} (first post of day: {is_first_post_of_day})"
+            )
+
+            # メッセージ履歴を会話形式に変換
+            conversation = []
+            total_tokens = 0
+            TOKEN_LIMIT = 350
+
+            # システムプロンプトのトークン数を計算
+            system_tokens = len(tokenizer.encode(get_system_prompt()))
+            total_tokens += system_tokens
+
+            # 会話履歴を構築
+            for message in messages:
+                if not message.content:
+                    continue
+
+                message_tokens = len(tokenizer.encode(message.content))
+                if total_tokens + message_tokens > TOKEN_LIMIT:
+                    break
+
+                if message.author == bot.user:
+                    conversation.insert(
+                        0, {"role": "assistant", "content": message.content}
+                    )
+                else:
+                    conversation.insert(0, {"role": "user", "content": message.content})
+
+                total_tokens += message_tokens
+
+            print(f"Total tokens used: {total_tokens}")
+
+            # システムプロンプトを追加
+            chat = [{"role": "system", "content": get_system_prompt()}] + conversation
+
+            # 初回投稿時の「やほー！」
+            if is_first_post_of_day:
+                chat.append({"role": "assistant", "content": "やほー！"})
+
+            # メッセージ生成
+            async with channel.typing():
+                try:
+                    # 時間帯に応じた温度調整
+                    temperature = (
+                        1.2 if current_hour in [12, 13, 14, 15, 16, 17, 18, 19] else 1.0
+                    )
+
+                    answer = await generate_runpod_response(
+                        conversation=chat, temperature=temperature
+                    )
+                    answer = answer.replace("\t", "\n")
+
+                    if not answer:
+                        print("Failed to generate an answer.")
+                        await asyncio.sleep(1800)  # 30分後に再試行
+                        continue
+
+                    # 初回投稿時に「やほー！」を追加
+                    if is_first_post_of_day and "やほー" not in answer:
+                        answer = "やほー！\n" + answer
+
+                    await channel.send(answer)
+                    print(f"Message sent: {answer[:50]}...")
+
+                    # 最後の投稿時刻を更新
+                    last_post_time = current_time
+
+                except Exception as e:
+                    print(f"Error in generating response: {e}")
+                    await asyncio.sleep(1800)  # エラー時は30分待機
+
+            # バーストモードでない場合の通常待機
+            if not burst_mode:
+                if timing_model:
+                    interval_hours = timing_model.get_next_interval_hours(current_hour)
+                    wait_seconds = interval_hours * 3600
+                else:
+                    # フォールバック: 1-6時間のランダム間隔
+                    wait_seconds = random.uniform(3600, 21600)
+
+                print(f"Next post in {wait_seconds / 3600:.1f} hours")
+                await asyncio.sleep(wait_seconds)
+
+        except Exception as e:
+            print(f"Error in run_daily_message: {e}")
+            await asyncio.sleep(3600)  # エラー時は1時間待機
 
 
 async def main():
