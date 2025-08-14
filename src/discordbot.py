@@ -6,6 +6,7 @@ import os
 import random
 import re
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 
 import aiohttp
 import discord
@@ -13,10 +14,11 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 from openai import OpenAI
+from PIL import Image
 from transformers import AutoTokenizer
 
-from utilities import contains_bad_words
 from message_timing_model import MessageTimingModel
+from utilities import contains_bad_words
 
 load_dotenv()
 
@@ -63,6 +65,116 @@ system_prompt = get_system_prompt()
 tokenizer = AutoTokenizer.from_pretrained(
     "tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3"
 )
+
+
+# 画像をリサイズする関数
+def resize_image_if_needed(image_data, max_size=(1024, 1024), quality=85):
+    """
+    画像が大きすぎる場合にリサイズします
+    """
+    try:
+        # PILで画像を開く
+        image = Image.open(BytesIO(image_data))
+
+        # 元のサイズをチェック
+        if image.width <= max_size[0] and image.height <= max_size[1]:
+            return image_data  # リサイズ不要
+
+        # アスペクト比を保持してリサイズ
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+        # JPEG形式で保存（品質を調整してファイルサイズを削減）
+        output = BytesIO()
+        image_format = "JPEG" if image.mode == "RGB" else "PNG"
+        if image_format == "JPEG":
+            image.save(output, format=image_format, quality=quality, optimize=True)
+        else:
+            image.save(output, format=image_format, optimize=True)
+
+        resized_data = output.getvalue()
+        print(f"Image resized from {len(image_data)} to {len(resized_data)} bytes")
+        return resized_data
+
+    except Exception as e:
+        print(f"Error resizing image: {e}")
+        return image_data  # リサイズに失敗した場合は元のデータを返す
+
+
+# 画像をダウンロードしてbase64エンコードする関数
+async def download_and_encode_image(attachment, max_file_size_mb=10):
+    """
+    Discord添付ファイルをダウンロードしてbase64エンコードします
+    """
+    try:
+        # 画像ファイルかどうかチェック
+        if not attachment.content_type or not attachment.content_type.startswith(
+            "image/"
+        ):
+            return None
+
+        # ファイルサイズチェック
+        if attachment.size > max_file_size_mb * 1024 * 1024:
+            print(
+                f"Image too large: {attachment.size / (1024 * 1024):.1f}MB > {max_file_size_mb}MB"
+            )
+            return None
+
+        # 画像をダウンロード
+        async with aiohttp.ClientSession() as session:
+            async with session.get(attachment.url) as response:
+                if response.status == 200:
+                    image_data = await response.read()
+
+                    # 画像をリサイズ（必要に応じて）
+                    image_data = resize_image_if_needed(image_data)
+
+                    # base64エンコード
+                    encoded_image = base64.b64encode(image_data).decode("utf-8")
+                    return encoded_image, attachment.content_type
+                else:
+                    print(f"Failed to download image: {response.status}")
+                    return None
+    except Exception as e:
+        print(f"Error downloading image: {e}")
+        return None
+
+
+# メッセージから画像を取得する関数
+async def get_images_from_message(message, max_images=3):
+    """
+    Discordメッセージから画像を取得してbase64エンコードします
+    """
+    images = []
+    if message.attachments:
+        for attachment in message.attachments:
+            if len(images) >= max_images:
+                print(f"Image limit reached ({max_images}), skipping remaining images")
+                break
+
+            image_result = await download_and_encode_image(attachment)
+            if image_result:
+                images.append(image_result)
+                print(f"Image detected: {attachment.filename}")
+    return images
+
+
+# メッセージの内容を画像も含めて構築する関数
+def build_message_content(text_content, images):
+    """
+    テキストと画像を含むメッセージコンテンツを構築します
+    """
+    if not images:
+        return text_content
+
+    content = [{"type": "text", "text": text_content}]
+    for encoded_image, content_type in images:
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{content_type};base64,{encoded_image}"},
+            }
+        )
+    return content
 
 
 # OpenAI APIを使用した応答生成
@@ -287,13 +399,19 @@ async def handle_generating_and_converting(message: discord.Message):
             is_debug, question = extract_d_option(question)  # -dオプションを抽出
             temperature, question = extract_t_option(question)  # -tオプションを抽出
 
+            # 現在のメッセージから画像を取得
+            images = await get_images_from_message(message)
+
             conversation = None
 
             # リプライの場合
             if is_reply:
                 chat = [{"role": "system", "content": get_system_prompt()}]
-                conversation = [{"role": "user", "content": question}]
+                # 現在のメッセージ（質問）から画像も含めて内容を構築
+                current_question_content = build_message_content(question, images)
+                conversation = [{"role": "user", "content": current_question_content}]
                 current_message = message
+                all_images = images.copy()  # すべての画像を追跡
 
                 # 過去の履歴を取得し、会話履歴を作成
                 while current_message.reference is not None:
@@ -316,34 +434,76 @@ async def handle_generating_and_converting(message: discord.Message):
                             f"<@{bot.user.id}>", ""
                         ).strip()
 
+                        # 前の質問メッセージから画像も取得（制限あり）
+                        if len(all_images) < 5:  # 全体で最大5枚まで
+                            remaining_slots = 5 - len(all_images)
+                            previous_images = await get_images_from_message(
+                                more_previous_message, max_images=remaining_slots
+                            )
+                            all_images.extend(previous_images)
+
+                        # 画像も含めて前の質問内容を構築
+                        previous_question_content = build_message_content(
+                            previous_question, previous_images
+                        )
+
                         conversation = [
-                            {"role": "user", "content": previous_question}
+                            {"role": "user", "content": previous_question_content}
                         ] + conversation
 
                         current_message = more_previous_message
 
+                    # トークン数チェック（簡易版）
+                    try:
+                        prompt = tokenizer.apply_chat_template(
+                            chat + conversation,
+                            tokenize=True,
+                            add_generation_prompt=True,
+                        )
+                        if len(prompt) > 250:
+                            break
+                    except Exception:
+                        # 画像が含まれている場合、トークン計算が失敗する可能性があるので、
+                        # 会話の長さで制限
+                        if len(conversation) > 10:
+                            break
+
+                    if previous_message.reference is None:
+                        break
+
+                # 画像がリプライチェーンに含まれている場合、OpenAIを強制使用
+                if all_images and not USE_OPENAI_MODEL:
+                    print(
+                        "Images found in reply chain, switching to OpenAI for this response"
+                    )
+            # メンションの場合
+            else:
+                # 現在のメッセージから画像も含めて内容を構築
+                question_content = build_message_content(question, images)
+                conversation = [{"role": "user", "content": question_content}]
+                chat = [{"role": "system", "content": get_system_prompt()}]
+
+                # 画像がない場合のみトークン計算
+                if not images:
                     prompt = tokenizer.apply_chat_template(
                         chat + conversation, tokenize=True, add_generation_prompt=True
                     )
 
-                    if len(prompt) > 250:
-                        break
+            # 画像の有無を判定（現在のメッセージまたはリプライチェーン内）
+            has_images = bool(images) or (is_reply and bool(all_images))
 
-                    if previous_message.reference is None:
-                        break
-            # メンションの場合
-            else:
-                conversation = [{"role": "user", "content": question}]
-                chat = [{"role": "system", "content": get_system_prompt()}]
-                prompt = tokenizer.apply_chat_template(
-                    chat + conversation, tokenize=True, add_generation_prompt=True
-                )
+            if USE_OPENAI_MODEL or has_images:
+                # OpenAI APIを使用（画像がある場合は強制的にOpenAI）
+                if has_images and not USE_OPENAI_MODEL:
+                    print("Images detected, switching to OpenAI for this response")
 
-            if USE_OPENAI_MODEL:
+                # 画像処理はgenerate_openai_response内で行われるため、imagesパラメータは不要
                 answer = await generate_openai_response(
-                    conversation=conversation, temperature=temperature
+                    conversation=conversation,
+                    temperature=temperature,
                 )
             else:
+                # RunPodを使用（画像がない場合のみ）
                 answer = await generate_runpod_response(
                     conversation=conversation, temperature=temperature
                 )
@@ -753,7 +913,6 @@ async def switch_model(interaction: discord.Interaction):
         if USE_OPENAI_MODEL
         else "Llama-3.1-Swallow"
     )
-    system_prompt = get_system_prompt()
     await interaction.response.send_message(
         f"モデルを「{model_name}」に切り替えました！"
     )
