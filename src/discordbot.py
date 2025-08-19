@@ -1110,13 +1110,9 @@ async def run_daily_message():
             # メッセージ生成
             async with channel.typing():
                 try:
-                    # 時間帯に応じた温度調整
-                    temperature = (
-                        1.2 if current_hour in [12, 13, 14, 15, 16, 17, 18, 19] else 1.0
-                    )
-
+                   
                     answer = await generate_runpod_response(
-                        conversation=chat, temperature=temperature
+                        conversation=chat, temperature=1.3
                     )
                     answer = answer.replace("\t", "\n")
 
