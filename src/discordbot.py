@@ -224,7 +224,13 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
                 model="intohay/llama3.1-swallow-hamahiyo",
                 messages=messages,
                 temperature=temperature,
-                extra_body={"repeat_penalty": 1.2},
+                extra_body={
+                    "repeat_penalty": 1.1,
+                    "top_p": 0.9,
+                    "top_k": 50,
+                    "frequency_penalty": 0.3,
+                    "presence_penalty": 0.2,
+                    },
             )
             content = response.choices[0].message.content
             if not contains_bad_words(content):
