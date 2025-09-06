@@ -230,7 +230,7 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
                     "top_k": 50,
                     "frequency_penalty": 0.3,
                     "presence_penalty": 0.2,
-                    },
+                },
             )
             content = response.choices[0].message.content
             if not contains_bad_words(content):
@@ -1080,39 +1080,43 @@ async def run_daily_message():
             system_tokens = len(tokenizer.encode(get_system_prompt()))
             total_tokens += system_tokens
 
-            # 会話履歴を構築
-            for message in messages:
-                if not message.content:
-                    continue
+            # その日最初の投稿では過去文脈を使わない。2回目以降のみ当日分の履歴を利用
+            if not is_first_post_of_day:
+                for message in messages:
+                    if not message.content:
+                        continue
 
-                message_tokens = len(tokenizer.encode(message.content))
-                if total_tokens + message_tokens > TOKEN_LIMIT:
-                    break
+                    # 当日以外のメッセージは文脈から除外
+                    message_date = message.created_at.astimezone(jst).date()
+                    if message_date != today:
+                        continue
 
-                if message.author == bot.user:
-                    conversation.insert(
-                        0, {"role": "assistant", "content": message.content}
-                    )
-                else:
-                    conversation.insert(0, {"role": "user", "content": message.content})
+                    message_tokens = len(tokenizer.encode(message.content))
+                    if total_tokens + message_tokens > TOKEN_LIMIT:
+                        break
 
-                total_tokens += message_tokens
+                    if message.author == bot.user:
+                        conversation.insert(
+                            0, {"role": "assistant", "content": message.content}
+                        )
+                    else:
+                        conversation.insert(
+                            0, {"role": "user", "content": message.content}
+                        )
+
+                    total_tokens += message_tokens
 
             print(f"Total tokens used: {total_tokens}")
 
-            # システムプロンプトを追加
-            chat = [{"role": "system", "content": get_system_prompt()}] + conversation
-
-            # 初回投稿時の「やほー！」
+            # 初回投稿時は「やほー！」を文脈として先置き
             if is_first_post_of_day:
-                chat.append({"role": "assistant", "content": "やほー！"})
+                conversation = [{"role": "assistant", "content": "やほー！"}]
 
             # メッセージ生成
             async with channel.typing():
                 try:
-                   
                     answer = await generate_runpod_response(
-                        conversation=chat, temperature=1.3
+                        conversation=conversation, temperature=1.3
                     )
                     answer = answer.replace("\t", "\n")
 
