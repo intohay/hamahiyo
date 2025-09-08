@@ -999,6 +999,29 @@ async def run_daily_message():
     today = now.date()
     daily_mandatory_post_at = make_today_mandatory_time(now)
 
+    # 起動時は必ず一度、文脈なし（やほー！）で投稿
+    try:
+        startup_conversation = [{"role": "assistant", "content": "やほー！"}]
+        async with channel.typing():
+            answer = await generate_runpod_response(
+                conversation=startup_conversation, temperature=1.1
+            )
+            answer = answer.replace("\t", "\n")
+            if "やほー" not in answer:
+                answer = "やほー！\n" + answer
+            await channel.send(answer)
+            print(f"Startup message sent: {answer[:50]}...")
+
+            # 当日初回として記録し、次回スケジュールも更新
+            last_daily_message_date = today
+            next_scheduled_post_at = now + timedelta(
+                hours=get_next_wait_time(
+                    MEAN_POST_INTERVAL_HOURS, STD_POST_INTERVAL_HOURS
+                )
+            )
+    except Exception as e:
+        print(f"Error sending startup message: {e}")
+
     while True:
         try:
             now = datetime.now(jst)
