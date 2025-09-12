@@ -220,6 +220,12 @@ async def generate_openai_response(prompt=None, temperature=0.8, conversation=No
 
 
 async def generate_runpod_response(prompt=None, temperature=0.8, conversation=None):
+    
+    url = RUNPOD_LLAMA_URL
+    
+    headers = {"Authorization": f"Bearer {RUNPOD_API_KEY}", "Content-Type": "application/json"}
+    
+    
     try:
         if conversation:
             messages = [
@@ -232,20 +238,32 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
             ]
 
         print(messages)
-
-        for _ in range(3):
-            response = runpod_client.chat.completions.create(
-                model="intohay/llama3.1-swallow-hamahiyo",
-                messages=messages,
-                temperature=temperature, 
-                sampling_params={ # https://github.com/runpod-workers/worker-vllm?tab=readme-ov-file#openai-request-input-parameters
+        
+        payload = {
+            "input": {
+                # messages でも prompt でも可。messagesならモデルのchat templateが適用される
+                "messages": messages,
+                # vLLMネイティブのsampling_paramsに細かく指定
+                "sampling_params": {
+                    "temperature": temperature,
                     "top_p": 0.9,
                     "top_k": 50,
                     "repetition_penalty": 1.1,
-                    "temperature": temperature,
-                }
-            )
-            content = response.choices[0].message.content
+                },
+                "stream": False
+            }
+        }
+
+        for _ in range(3):
+            
+            
+            r = requests.post(url, headers=headers, json=payload, timeout=600)
+            r.raise_for_status()
+            data = r.json()
+            
+            print(data)
+            content = data["output"][0]["choices"][0]["tokens"][0]
+            
             if not contains_bad_words(content):
                 return content.replace("\t", "\n").split("\n")[0]
 
