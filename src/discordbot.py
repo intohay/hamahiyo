@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
@@ -22,12 +23,17 @@ from utilities import contains_bad_words
 
 load_dotenv()
 
-RUNPOD_VITS_URL = os.getenv("RUNPOD_VITS_URL")
-RUNPOD_LLAMA_URL = os.getenv("RUNPOD_LLAMA_URL")
+RUNPOD_LLAMA_ENDPOINT_ID = os.getenv("RUNPOD_LLAMA_ENDPOINT_ID")
+RUNPOD_VITS_ENDPOINT_ID = os.getenv("RUNPOD_VITS_ENDPOINT_ID")
+RUNPOD_BASE_URL = os.getenv("RUNPOD_BASE_URL")
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
+RUNPOD_VITS_URL = (
+    f"{RUNPOD_BASE_URL}/{RUNPOD_VITS_ENDPOINT_ID}/runsync"
+    if RUNPOD_BASE_URL and RUNPOD_VITS_ENDPOINT_ID
+    else None
+)
 
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-runpod_client = OpenAI(base_url=RUNPOD_LLAMA_URL, api_key=RUNPOD_API_KEY)
 
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -220,12 +226,13 @@ async def generate_openai_response(prompt=None, temperature=0.8, conversation=No
 
 
 async def generate_runpod_response(prompt=None, temperature=0.8, conversation=None):
-    
-    url = RUNPOD_LLAMA_URL
-    
-    headers = {"Authorization": f"Bearer {RUNPOD_API_KEY}", "Content-Type": "application/json"}
-    
-    
+    url = f"{RUNPOD_BASE_URL}/{RUNPOD_LLAMA_ENDPOINT_ID}/runsync"
+
+    headers = {
+        "Authorization": f"Bearer {RUNPOD_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
     try:
         if conversation:
             messages = [
@@ -238,32 +245,116 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
             ]
 
         print(messages)
-        
+
         payload = {
             "input": {
-                # messages でも prompt でも可。messagesならモデルのchat templateが適用される
                 "messages": messages,
-                # vLLMネイティブのsampling_paramsに細かく指定
+                # vLLMネイティブのsampling_paramsに細かく指定 (https://github.com/runpod-workers/worker-vllm?tab=readme-ov-file#openai-request-input-parameters)
                 "sampling_params": {
                     "temperature": temperature,
                     "top_p": 0.9,
                     "top_k": 50,
                     "repetition_penalty": 1.1,
                 },
-                "stream": False
+                "stream": False,
             }
         }
 
         for _ in range(3):
-            
-            
+
+            def extract_text_from_response(response_json):
+                """RunPodの様々なレスポンス形式からテキストを安全に取り出す。"""
+                try:
+                    # 既存のvLLMトークナイズ出力形式
+                    return response_json["output"][0]["choices"][0]["tokens"][0]
+                except Exception:
+                    pass
+
+                output = response_json.get("output")
+
+                # ステータスAPIの形式 { output: { text: [...]|str, ... } }
+                if isinstance(output, dict):
+                    if "text" in output:
+                        text_val = output["text"]
+                        if isinstance(text_val, list):
+                            return "".join(text_val)
+                        return str(text_val)
+                    # OpenAI風 { output: { choices: [ { message: { content } } ] } }
+                    if (
+                        "choices" in output
+                        and isinstance(output["choices"], list)
+                        and output["choices"]
+                    ):
+                        choice = output["choices"][0]
+                        if isinstance(choice, dict):
+                            if (
+                                "message" in choice
+                                and isinstance(choice["message"], dict)
+                                and "content" in choice["message"]
+                            ):
+                                return str(choice["message"]["content"])
+                            if "text" in choice:
+                                return str(choice["text"])
+
+                # OpenAI互換がトップレベルにあるケース
+                if (
+                    "choices" in response_json
+                    and isinstance(response_json["choices"], list)
+                    and response_json["choices"]
+                ):
+                    choice = response_json["choices"][0]
+                    if isinstance(choice, dict):
+                        if (
+                            "message" in choice
+                            and isinstance(choice["message"], dict)
+                            and "content" in choice["message"]
+                        ):
+                            return str(choice["message"]["content"])
+                        if "text" in choice:
+                            return str(choice["text"])
+
+                return None
+
             r = requests.post(url, headers=headers, json=payload, timeout=600)
             r.raise_for_status()
             data = r.json()
-            
             print(data)
-            content = data["output"][0]["choices"][0]["tokens"][0]
-            
+
+            # IN_QUEUE の場合はステータスAPIをポーリング
+            if data.get("status") == "IN_QUEUE" and data.get("id"):
+                job_id = data["id"]
+                status_url = (
+                    f"{RUNPOD_BASE_URL}/{RUNPOD_LLAMA_ENDPOINT_ID}/status/{job_id}"
+                )
+                while True:
+                    try:
+                        sr = requests.get(status_url, headers=headers, timeout=600)
+                        sr.raise_for_status()
+                        sdata = sr.json()
+                        print(sdata)
+
+                        s = sdata.get("status")
+                        if s == "COMPLETED":
+                            content = extract_text_from_response(sdata)
+                            if content is None:
+                                content = json.dumps(sdata)
+                            if not contains_bad_words(content):
+                                return content.replace("\t", "\n").split("\n")[0]
+                            else:
+                                break  # 次の試行へ
+                        elif s in {"FAILED", "ERROR", "CANCELLED", "TIMED_OUT"}:
+                            # 異常終了は次の試行へ
+                            break
+                    except Exception as _:
+                        # 一時的なエラーはリトライ
+                        pass
+                    await asyncio.sleep(1)
+
+            # 通常の同期レスポンスから抽出
+            content = extract_text_from_response(data)
+            if content is None:
+                content = json.dumps(data)
+
             if not contains_bad_words(content):
                 return content.replace("\t", "\n").split("\n")[0]
 
@@ -288,11 +379,56 @@ def fetch_audio_from_api(text):
     }
 
     response = requests.post(RUNPOD_VITS_URL, headers=headers, data=json.dumps(data))
-
-    if response.status_code == 200:
-        return response.json()["output"]["voice"]
-    else:
+    print(response.json())
+    if response.status_code != 200:
         raise Exception(f"API call failed with status code {response.status_code}")
+
+    resp_json = response.json()
+
+    def extract_voice_from_response(resp_obj):
+        try:
+            output = resp_obj.get("output")
+            if isinstance(output, dict):
+                # 期待形式: { output: { voice: "...base64..." } }
+                if "voice" in output:
+                    return output["voice"]
+                # 代替形式: { output: { audio: "..." } }
+                if "audio" in output:
+                    return output["audio"]
+        except Exception:
+            pass
+        return None
+
+    # IN_QUEUE の場合はステータスAPIでポーリング
+    if resp_json.get("status") == "IN_QUEUE" and resp_json.get("id"):
+        job_id = resp_json["id"]
+        status_url = f"{RUNPOD_BASE_URL}/{RUNPOD_VITS_ENDPOINT_ID}/status/{job_id}"
+        while True:
+            try:
+                sr = requests.get(status_url, headers=headers, timeout=600)
+                sr.raise_for_status()
+                sdata = sr.json()
+                print(sdata)
+                s = sdata.get("status")
+                if s == "COMPLETED":
+                    voice_b64 = extract_voice_from_response(sdata)
+                    if voice_b64:
+                        return voice_b64
+                    # フォールバック: 形が違う場合は例外
+                    raise Exception("Voice data not found in completed response")
+                elif s in {"FAILED", "ERROR", "CANCELLED", "TIMED_OUT"}:
+                    raise Exception(f"VITS job ended with status: {s}")
+            except Exception as _:
+                # 一時的なエラーは待機して再試行
+                pass
+            time.sleep(1)
+
+    # 通常の同期レスポンスから抽出
+    voice_b64 = extract_voice_from_response(resp_json)
+    if voice_b64:
+        return voice_b64
+
+    raise Exception("Unexpected VITS response format: voice not found")
 
 
 def save_audio_file(base64_data, file_path):
