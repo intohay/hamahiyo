@@ -203,11 +203,11 @@ async def generate_openai_response(prompt=None, temperature=1.1, conversation=No
         # 会話履歴がある場合はそれを使用し、ない場合は単一のプロンプトを使用
         if conversation:
             messages = [
-                {"role": "system", "content": get_system_prompt()}
+                {"role": "system", "content": OPENAI_SYSTEM_PROMPT}
             ] + conversation
         else:
             messages = [
-                {"role": "system", "content": get_system_prompt()},
+                {"role": "system", "content": OPENAI_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ]
 
