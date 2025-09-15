@@ -236,11 +236,11 @@ async def generate_runpod_response(prompt=None, temperature=1.2, conversation=No
     try:
         if conversation:
             messages = [
-                {"role": "system", "content": get_system_prompt()}
+                {"role": "system", "content": LLAMA_SYSTEM_PROMPT}
             ] + conversation
         else:
             messages = [
-                {"role": "system", "content": get_system_prompt()},
+                {"role": "system", "content": LLAMA_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ]
 
