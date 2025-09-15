@@ -255,6 +255,7 @@ async def generate_runpod_response(prompt=None, temperature=1.2, conversation=No
                     "top_p": 0.95,
                     "top_k": 50,
                     "repetition_penalty": 1.2,
+                    "stop": ["\t", "\n"],
                 },
                 "stream": False,
             }
@@ -1156,7 +1157,7 @@ async def run_daily_message():
         startup_conversation = [{"role": "assistant", "content": "やほー！"}]
         async with channel.typing():
             answer = await generate_runpod_response(
-                conversation=startup_conversation, temperature=1.1
+                conversation=startup_conversation
             )
             answer = answer.replace("\t", "\n")
             if "やほー" not in answer:
