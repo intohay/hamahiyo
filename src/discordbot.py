@@ -198,7 +198,7 @@ def build_message_content(text_content, images):
 
 
 # OpenAI APIを使用した応答生成
-async def generate_openai_response(prompt=None, temperature=0.8, conversation=None):
+async def generate_openai_response(prompt=None, temperature=1.1, conversation=None):
     try:
         # 会話履歴がある場合はそれを使用し、ない場合は単一のプロンプトを使用
         if conversation:
@@ -225,7 +225,7 @@ async def generate_openai_response(prompt=None, temperature=0.8, conversation=No
         return "エラーが発生しました。もう一度試してください。"
 
 
-async def generate_runpod_response(prompt=None, temperature=0.8, conversation=None):
+async def generate_runpod_response(prompt=None, temperature=1.2, conversation=None):
     url = f"{RUNPOD_BASE_URL}/{RUNPOD_LLAMA_ENDPOINT_ID}/runsync"
 
     headers = {
@@ -252,9 +252,9 @@ async def generate_runpod_response(prompt=None, temperature=0.8, conversation=No
                 # vLLMネイティブのsampling_paramsに細かく指定 (https://github.com/runpod-workers/worker-vllm?tab=readme-ov-file#openai-request-input-parameters)
                 "sampling_params": {
                     "temperature": temperature,
-                    "top_p": 0.9,
+                    "top_p": 0.95,
                     "top_k": 50,
-                    "repetition_penalty": 1.1,
+                    "repetition_penalty": 1.2,
                 },
                 "stream": False,
             }
@@ -569,8 +569,8 @@ async def handle_generating_and_converting(message: discord.Message):
                     question = reply_message.content
                     message = reply_message
 
-            is_debug, question = extract_d_option(question)  # -dオプションを抽出
-            temperature, question = extract_t_option(question)  # -tオプションを抽出
+            # is_debug, question = extract_d_option(question)  # -dオプションを抽出
+            # temperature, question = extract_t_option(question)  # -tオプションを抽出
 
             # 現在のメッセージから画像を取得
             images = await get_images_from_message(message)
@@ -672,13 +672,12 @@ async def handle_generating_and_converting(message: discord.Message):
 
                 # 画像処理はgenerate_openai_response内で行われるため、imagesパラメータは不要
                 answer = await generate_openai_response(
-                    conversation=conversation,
-                    temperature=temperature,
+                    conversation=conversation
                 )
             else:
                 # RunPodを使用（画像がない場合のみ）
                 answer = await generate_runpod_response(
-                    conversation=conversation, temperature=temperature
+                    conversation=conversation
                 )
 
             # ボイスチャンネルにいる場合は音声生成を試行
@@ -1247,7 +1246,7 @@ async def run_daily_message():
                 async with channel.typing():
                     try:
                         answer = await generate_runpod_response(
-                            conversation=conversation, temperature=1.1
+                            conversation=conversation
                         )
                         answer = answer.replace("\t", "\n")
 
