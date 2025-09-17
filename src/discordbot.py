@@ -255,6 +255,7 @@ async def generate_runpod_response(prompt=None, temperature=1.2, conversation=No
                     "top_p": 0.95,
                     "top_k": 50,
                     "repetition_penalty": 1.2,
+                    "seed": random.randint(0, 100000),
                     "stop": ["\t", "\n"],
                 },
                 "stream": False,
